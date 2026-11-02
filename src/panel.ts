@@ -4,9 +4,9 @@ import "./style.css";
 import { t } from "./i18n/fr.ts";
 import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./lib/api.ts";
 import { config } from "./lib/config.ts";
-import { button, el, icon, ripple } from "./lib/dom.ts";
+import { button, el, icon, link } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
-import { checkBody, frenchDate, hostname, httpUrl, isUrlLabel, IMAGE_TYPES, imageFileProblem, MAX_TEXT, middleTruncate, validCapture } from "./lib/safety.ts";
+import { checkBody, frenchDate, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
 import type { ImageResult, LinkResult, Me, Preparation, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
 
@@ -37,15 +37,6 @@ let queuedCapture: Capture | null = null;
 let preview = "";
 const clock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-function link(url: string, text: string, className = ""): HTMLElement {
-  const safe = httpUrl(url);
-  if (!safe) return el("span", {}, text);
-  const asUrl = isUrlLabel(text);
-  const clamp = !asUrl && !className.split(" ").some((c) => c === "button" || c === "quiet-link");
-  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: [className, clamp ? "clamp" : ""].filter(Boolean).join(" "), title: asUrl ? safe : text }, asUrl ? middleTruncate(text) : text, icon("external"));
-  if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
-  return anchor;
-}
 const workspacePath = (ws = state.ws) => `/workspaces/${encodeURIComponent(ws)}`;
 const deskUrl = (ws = state.ws) => `${config.webUrl}/w/${encodeURIComponent(ws)}/affirmations`;
 const claimUrl = (id: string, ws = state.sent?.ws || state.ws) => `${deskUrl(ws)}/${encodeURIComponent(id)}`;
