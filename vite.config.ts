@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
         this.emitFile({ type: "asset", fileName: "manifest.json", source: JSON.stringify({
           manifest_version: 3,
           name: "FANILO — Vérifier ici",
-          version: "0.1.0",
+          version: (JSON.parse(readFileSync(resolve(import.meta.dirname, "package.json"), "utf8")) as { version: string }).version,
           description: "Vérifiez un texte, un lien ou les indices de génération d’une image sans quitter la page.",
           minimum_chrome_version: "116",
           permissions: ["contextMenus", "sidePanel", "storage"],

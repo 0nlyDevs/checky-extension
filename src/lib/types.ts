@@ -3,6 +3,7 @@ import type { components } from "./api-schema.d.ts";
 export type Me = components["schemas"]["MeOut"];
 export type Membership = components["schemas"]["MembershipOut"];
 export type ImageResult = components["schemas"]["ImageOut"];
+export type PublicResult = components["schemas"]["PublicCheckOut"];
 export type Verdict = "true" | "misleading" | "false" | "unverifiable";
 export type StepKey = "read" | "claims" | "search" | "verdict";
 export type Step = { key: StepKey; status: "waiting" | "running" | "done" | "failed"; summary: string };

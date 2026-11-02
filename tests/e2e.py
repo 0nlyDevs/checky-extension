@@ -46,6 +46,21 @@ RESULT = {
         "missing": "Vérifier le communiqué officiel.",
     },
 }
+PUBLIC_RESULT = {
+    "url": None, "kind": "text", "title": "", "excerpt": "Madagascar quitte l’OMS",
+    "published_at": None, "days_old": None, "needs_text": False,
+    "published": [{
+        "id": ITEM, "ref": "FAN-0001", "title": "Madagascar quitte l’OMS",
+        "verdict": "false", "reason": "Une vérification publiée à comparer au passage sélectionné.",
+        "post": None, "sources": ["Source publique"], "origin": "press", "first_seen_at": None,
+        "published_at": "2026-11-02T08:00:00Z", "newsroom": {"name": "Rédaction publique", "slug": "publique"},
+    }],
+    "results": [
+        {"n": 1, "kind": "fact-check", "title": "Une source vérifiable", "url": SOURCE,
+         "snippet": "<img src=x onerror=alert(1)> reste du texte, pas du HTML.", "date": None},
+        {"n": 2, "kind": "web", "title": "Lien dangereux", "url": "javascript:alert(1)", "snippet": "Jamais ouvert.", "date": None},
+    ],
+}
 
 
 class Fixture(BaseHTTPRequestHandler):
@@ -80,9 +95,23 @@ class Fixture(BaseHTTPRequestHandler):
     def do_POST(self):
         data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
         REQUESTS.append(("POST", self.path, data))
-        assert self.headers.get("Authorization") == f"Bearer {TOKEN}"
+        if self.path.startswith("/api/v1/public/"):
+            assert not self.headers.get("Authorization"), "Public checks must not send a token"
+        else:
+            assert self.headers.get("Authorization") == f"Bearer {TOKEN}"
         assert not self.headers.get("Cookie"), "Website cookies must not go to the API"
+        if self.path == "/api/v1/public/check":
+            if data.get("text") == "LIMIT":
+                return self.send({}, 429)
+            if data.get("text") == "NOTREADY":
+                return self.send({}, 404)
+            result = {**PUBLIC_RESULT}
+            if data.get("text") == "NEW":
+                result["published"] = []
+            return self.send(result)
         if self.path.endswith("/link-check"):
+            if data.get("text") == "AUTH":
+                return self.send({}, 401)
             if data.get("text") == "LIMIT":
                 return self.send({}, 429)
             events = [
@@ -140,6 +169,8 @@ def main():
             extension = ROOT / "dist-local"
             assert (extension / "manifest.json").exists(), "Run npm run build:local first"
             context = p.chromium.launch_persistent_context(profile, channel="chromium", executable_path=executable, headless=True, viewport={"width": 400, "height": 900}, args=[f"--disable-extensions-except={extension}", f"--load-extension={extension}"])
+            browser_requests = []
+            context.on("request", lambda request: browser_requests.append((request.method, request.url)))
             try:
                 worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker")
                 extension_id = worker.url.split("/")[2]
@@ -148,30 +179,29 @@ def main():
                 panel.on("pageerror", lambda error: errors.append(str(error)))
                 panel.goto(f"chrome-extension://{extension_id}/sidepanel.html")
                 panel.wait_for_load_state("networkidle")
-                expect(panel.get_by_text("Connectez votre rédaction", exact=True)).to_be_visible()
+                expect(panel.get_by_text("Accessible sans compte", exact=True)).to_be_visible()
+                expect(panel.get_by_role("button", name="Vérifier ce contenu", exact=True)).to_be_enabled()
+                expect(panel.get_by_text("Connectez votre rédaction", exact=True)).to_have_count(0)
+                # Observe this browser context, not unrelated clients probing the local ports.
+                assert not [r for r in browser_requests if r[1].startswith("http")], browser_requests
                 manifest = panel.evaluate("chrome.runtime.getManifest()")
                 assert set(manifest["permissions"]) == {"contextMenus", "sidePanel", "storage"}
                 assert "content_scripts" not in manifest and "externally_connectable" not in manifest
 
-                website = context.new_page()
-                website.goto("http://localhost:3000/connexion")
-                panel.bring_to_front()
-                panel.get_by_role("button", name="Actualiser la connexion", exact=True).click()
-                expect(panel.get_by_label("Rédaction", exact=True)).to_be_visible()
-                assert not [r for r in REQUESTS if r[0] == "POST"]
                 panel.screenshot(path=str(OUT / "panel-ready.png"), full_page=True)
 
                 capture(panel, "Madagascar quitte l’OMS")
                 expect(panel.get_by_label("L’affirmation à vérifier", exact=True)).to_have_value("Madagascar quitte l’OMS")
-                assert not [r for r in REQUESTS if r[0] == "POST"], "Capture must not start analysis automatically"
+                assert not [r for r in browser_requests if r[0] == "POST"], "Capture must not start analysis automatically"
                 panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
-                expect(panel.get_by_role("heading", name="Faux", exact=True)).to_be_visible()
-                payload = next(r[2] for r in REQUESTS if r[1].endswith("/link-check"))
+                expect(panel.get_by_role("heading", name="Vérifications publiées sur des sujets proches", exact=True)).to_be_visible()
+                payload = next(r[2] for r in REQUESTS if r[1] == "/api/v1/public/check")
                 assert payload == {"text": "Madagascar quitte l’OMS"}
-                expect(panel.locator(".summary")).to_contain_text("<img src=x onerror=alert(1)>")
+                expect(panel.locator("#outcome")).to_contain_text("<img src=x onerror=alert(1)>")
                 assert panel.locator("#outcome img").count() == 0
                 assert panel.locator('a[href^="javascript:"]').count() == 0
-                assert "dashed" in panel.locator(".verdict").evaluate("node => getComputedStyle(node).borderTopStyle")
+                assert "solid" in panel.locator(".published-verdict").evaluate("node => getComputedStyle(node).borderTopStyle")
+                assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public verification must not call authentication"
                 assert panel.locator("button.action").count() == 1
                 for width in (320, 400, 480):
                     panel.set_viewport_size({"width": width, "height": 900})
@@ -182,34 +212,62 @@ def main():
                 panel.screenshot(path=str(OUT / "panel-text-dark.png"), full_page=True)
                 panel.emulate_media(color_scheme="light")
 
-                panel.get_by_role("button", name="Suivre dans ma rédaction", exact=True).click()
-                expect(panel.get_by_text("Le dossier est créé, mais certaines sources n’ont pas pu être jointes. Réessayez sans recréer le dossier.", exact=True)).to_be_visible()
-                panel.get_by_role("button", name="Réessayer les sources manquantes", exact=True).click()
-                expect(panel.get_by_role("button", name="Réessayer les sources manquantes", exact=True)).to_have_count(0)
-                assert COUNTS["create"] == 1
-                assert COUNTS["attach"] >= 3
-
                 capture(panel, "", "image", "https://image.example/a.jpg")
                 panel.get_by_role("button", name="Examiner l’image", exact=True).click()
                 expect(panel.get_by_role("heading", name="Aucun indice détecté", exact=True)).to_be_visible()
                 expect(panel.get_by_text("Aucun détecteur de pixels configuré. Seules les métadonnées ont été examinées.", exact=True)).to_be_visible()
                 expect(panel.get_by_text("Structure Content Credentials repérée, signature non vérifiée. Sa présence ne prouve pas l’authenticité.", exact=True)).to_be_visible()
                 assert not panel.locator("#outcome").inner_text().count("%")
+                assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public image examination must not call authentication"
                 panel.screenshot(path=str(OUT / "panel-image.png"), full_page=True)
 
+                capture(panel, "NEW")
+                panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
+                expect(panel.get_by_role("heading", name="Pas de verdict publié retrouvé", exact=True)).to_be_visible()
+                expect(panel.get_by_role("heading", name="Sources retrouvées", exact=True)).to_be_visible()
+                panel.get_by_role("button", name="Enregistrer dans une rédaction", exact=True).click()
+                expect(panel.get_by_text("Connectez votre rédaction", exact=True)).to_be_visible()
+                assert not [r for r in browser_requests if "/api/auth/" in r[1]] and COUNTS["create"] == 0
+                website = context.new_page()
+                website.goto("http://localhost:3000/connexion")
+                panel.bring_to_front()
+                panel.get_by_role("button", name="Actualiser la connexion", exact=True).click()
+                expect(panel.get_by_label("Rédaction", exact=True)).to_be_visible()
+                expect(panel.get_by_role("heading", name="Pas de verdict publié retrouvé", exact=True)).to_be_visible()
+                panel.locator(".source input[type=checkbox]").check()
+                panel.get_by_role("button", name="Suivre dans ma rédaction", exact=True).click()
+                expect(panel.get_by_text("Le dossier est créé, mais certaines sources n’ont pas pu être jointes. Réessayez sans recréer le dossier.", exact=True)).to_be_visible()
+                panel.get_by_role("button", name="Réessayer les sources manquantes", exact=True).click()
+                expect(panel.get_by_role("button", name="Réessayer les sources manquantes", exact=True)).to_have_count(0)
+                assert COUNTS["create"] == 1 and COUNTS["attach"] >= 3
+
+                panel.get_by_role("button", name="Ma rédaction", exact=True).click()
+                expect(panel.get_by_label("Rédaction", exact=True)).to_be_visible()
+                capture(panel, "Madagascar quitte l’OMS")
+                panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
+                expect(panel.get_by_role("heading", name="Faux", exact=True)).to_be_visible()
+                assert "dashed" in panel.locator(".verdict").evaluate("node => getComputedStyle(node).borderTopStyle")
                 capture(panel, "INCOMPLETE")
                 panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
                 expect(panel.get_by_role("alert")).to_contain_text("interrompue")
                 expect(panel.get_by_role("button", name="Suivre dans ma rédaction", exact=True)).to_have_count(0)
+                public_before = len([r for r in browser_requests if "/api/v1/public/" in r[1]])
+                capture(panel, "AUTH")
+                panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
+                expect(panel.get_by_role("alert")).to_contain_text("session a expiré")
+                assert len([r for r in browser_requests if "/api/v1/public/" in r[1]]) == public_before, "Never silently fall back to public processing on auth failure"
+                panel.get_by_role("button", name="Déconnecter l’extension", exact=True).click()
+                expect(panel.get_by_text("Accessible sans compte", exact=True)).to_be_visible()
                 capture(panel, "LIMIT")
                 panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
                 expect(panel.get_by_role("alert")).to_contain_text("Trop d’analyses")
-                panel.get_by_role("button", name="Déconnecter l’extension", exact=True).click()
-                expect(panel.get_by_text("Connectez votre rédaction", exact=True)).to_be_visible()
+                capture(panel, "NOTREADY")
+                panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
+                expect(panel.get_by_role("alert")).to_contain_text("service public n’est pas encore disponible")
                 stores = panel.evaluate("""async () => ({session: await chrome.storage.session.get(null), local: await chrome.storage.local.get(null), sync: await chrome.storage.sync.get(null)})""")
                 assert not stores["local"] and not stores["sync"] and "fanilo-auth" not in stores["session"]
                 assert not errors, errors
-                print("PASS: real Chromium extension, cookie login, explicit consent, streamed text, safe DOM, partial-save retry, image caveats, responsive light/dark, interrupted/rate-limited requests, session-only storage")
+                print("PASS: anonymous text/images without token requests, published-vs-new claim distinction, optional login preserving public result, private SSE, safe DOM, source retry, image caveats, responsive light/dark, no silent public fallback, session-only storage")
             finally:
                 context.close()
     finally:

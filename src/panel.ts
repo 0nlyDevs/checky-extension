@@ -2,15 +2,15 @@ import "@fontsource-variable/archivo";
 import "@fontsource-variable/atkinson-hyperlegible-next";
 import "./style.css";
 import { t } from "./i18n/fr.ts";
-import { api, ApiError, forgetToken, stream } from "./lib/api.ts";
+import { api, ApiError, forgetToken, publicApi, stream } from "./lib/api.ts";
 import { config } from "./lib/config.ts";
 import { button, el, icon } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
 import { checkBody, hostname, httpUrl, MAX_TEXT, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
-import type { ImageResult, LinkResult, Me, Step, StepKey, Verdict } from "./lib/types.ts";
+import type { ImageResult, LinkResult, Me, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
 
-type Sent = { mode: Mode; text: string; caption: string; url: string; pageUrl: string; ws: string };
+type Sent = { mode: Mode; text: string; caption: string; url: string; pageUrl: string; ws: string; audience: "public" | "newsroom" };
 type Saved = { id: string; ref: string | null; pending: string[] };
 const root = document.querySelector<HTMLDivElement>("#app")!;
 const formArea = el("div");
@@ -20,9 +20,11 @@ const keys: StepKey[] = ["read", "claims", "search", "verdict"];
 const freshSteps = (): Step[] => keys.map((key) => ({ key, status: "waiting", summary: "" }));
 const state = {
   me: null as Me | null, ws: "", connecting: false, authError: "",
+  audience: "public" as "public" | "newsroom", savePrompt: false,
   mode: "text" as Mode, text: "", caption: "", url: "", pageUrl: "", truncated: false,
   running: false, saving: false, complete: false, error: "", revision: 0,
   result: null as LinkResult | null, image: null as ImageResult | null, sent: null as Sent | null,
+  publicResult: null as PublicResult | null,
   steps: freshSteps(), log: [] as { time: string; text: string }[], picked: new Set<string>(), claim: 0,
   includeOriginal: true, saved: null as Saved | null, uncertainSave: false,
 };
@@ -43,7 +45,7 @@ const claimUrl = (id: string, ws = state.sent?.ws || state.ws) => `${deskUrl(ws)
 function errorText(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401) return t.errors.unauthorized;
-    if ([403, 404].includes(error.status)) return t.errors.forbidden;
+    if ([403, 404].includes(error.status)) return state.audience === "public" && !state.saving ? t.errors.publicUnavailable : t.errors.forbidden;
     if (error.status === 429) return t.errors.rateLimit;
     if (error.status === 422) return t.errors.invalid;
     if (error.code === "ai_unavailable" || error.status === 503) return t.errors.unavailable;
@@ -55,6 +57,7 @@ function errorText(error: unknown): string {
 
 function resetResults(): void {
   state.result = null; state.image = null; state.saved = null; state.sent = null;
+  state.publicResult = null; state.savePrompt = false;
   state.complete = false; state.error = ""; state.steps = freshSteps(); state.log = [];
   state.picked.clear(); state.claim = 0; state.uncertainSave = false;
   outcome.replaceChildren();
@@ -62,14 +65,16 @@ function resetResults(): void {
 
 function stop(message = ""): void {
   state.revision++; controller?.abort(); controller = null; state.running = false;
-  state.complete = false; state.result = null; state.image = null; state.error = message;
+  state.complete = false; state.result = null; state.publicResult = null; state.image = null; state.error = message;
 }
 
 async function connect(): Promise<void> {
   if (state.running || state.saving) return;
-  resetResults();
+  if (state.sent?.audience !== "public") resetResults();
   state.connecting = true; state.authError = ""; render();
   try {
+    // Explicit connection follows the website's current account, not a previous cached JWT.
+    await forgetToken();
     const me = await api<Me>("/me");
     const stored = (await chrome.storage.session.get("fanilo-workspace"))["fanilo-workspace"] as string | undefined;
     state.me = me;
@@ -83,17 +88,21 @@ async function disconnect(): Promise<void> {
   await forgetToken();
   await chrome.storage.session.remove([captureKey, "fanilo-workspace"]);
   state.me = null; state.ws = ""; state.text = ""; state.caption = ""; state.url = ""; state.pageUrl = "";
-  state.authError = t.disconnectHelp; render();
+  state.audience = "public"; state.authError = t.disconnectHelp; render();
 }
 
-function renderAuth(): HTMLElement {
-  if (!state.me) return el("section", { class: "connection", "aria-labelledby": "connection-title" },
+function connectionControls(): HTMLElement {
+  return el("section", { class: "connection", "aria-labelledby": "connection-title" },
     el("h2", { id: "connection-title" }, state.connecting ? t.connecting : t.signedOut),
     el("p", { class: "muted" }, t.signInHelp),
     state.authError && el("p", { role: "status", class: "notice" }, state.authError),
     el("div", { class: "button-row" }, link(`${config.webUrl}/connexion`, t.connect, "button ink"), button(t.reconnect, () => { void connect(); }, { disabled: state.connecting })),
     el("details", {}, el("summary", {}, t.cookieHelpTitle), el("p", {}, t.cookieHelp)),
   );
+}
+
+function chooseWorkspace(): HTMLElement {
+  if (!state.me?.memberships.length) return el("div", {}, el("p", { class: "notice" }, t.noWorkspace), button(t.reconnect, () => { void connect(); }, { disabled: state.connecting }));
   const select = el("select", { id: "workspace", disabled: state.running || state.saving || state.connecting });
   for (const membership of state.me.memberships) {
     const option = el("option", { value: membership.workspace_id }, membership.name);
@@ -101,12 +110,25 @@ function renderAuth(): HTMLElement {
     select.append(option);
   }
   select.addEventListener("change", () => {
-    state.ws = select.value; stop(); resetResults();
+    state.ws = select.value;
+    if (state.sent?.audience !== "public") { stop(); resetResults(); }
     void chrome.storage.session.set({ "fanilo-workspace": state.ws }); render();
   });
+  return el("div", { class: "workspace-row" }, el("label", { for: "workspace" }, t.workspace), select);
+}
+
+function renderAuth(): HTMLElement {
+  if (state.audience === "public") return el("section", { class: "public-access" },
+    el("div", { class: "identity-top" }, el("span", {}, t.publicMode), button(t.newsroomMode, () => {
+      stop(); resetResults(); state.audience = "newsroom"; render(); void connect();
+    }, { class: "quiet", disabled: state.running || state.saving || state.connecting })),
+    el("p", { class: "muted" }, t.publicHelp),
+  );
+  const back = button(t.continuePublic, () => { stop(); resetResults(); state.audience = "public"; render(); }, { class: "quiet", disabled: state.running || state.saving });
+  if (!state.me) return el("div", {}, back, connectionControls());
   const node = el("section", { class: "identity" },
     el("div", { class: "identity-top" }, el("span", {}, state.me.name || state.me.email || t.name), button(t.disconnect, () => { void disconnect(); }, { class: "quiet", disabled: state.running || state.saving })),
-    state.me.memberships.length ? el("div", { class: "workspace-row" }, el("label", { for: "workspace" }, t.workspace), select) : el("p", { class: "notice" }, t.noWorkspace),
+    chooseWorkspace(), back,
   );
   if (!state.me.memberships.length || state.error === t.errors.unauthorized || state.error === t.errors.forbidden) {
     node.append(button(t.reconnect, () => { void connect(); }, { class: "quiet", disabled: state.connecting || state.running || state.saving }));
@@ -122,7 +144,7 @@ function render(): void {
   }, { "aria-pressed": String(state.mode === mode), disabled: busy }));
   const form = el("form", { class: "capture-form" });
   if (state.mode === "text") {
-    const field = el("textarea", { id: "content", maxlength: String(MAX_TEXT), rows: "5", placeholder: t.inputPlaceholder, required: true, disabled: busy });
+    const field = el("textarea", { id: "content", minlength: state.audience === "public" ? "3" : "1", maxlength: String(MAX_TEXT), rows: "5", placeholder: t.inputPlaceholder, required: true, disabled: busy });
     field.value = state.text;
     const count = el("span", { class: "count", "aria-hidden": "true" }, `${state.text.length} / ${MAX_TEXT}`);
     field.addEventListener("input", () => { state.text = field.value; state.truncated = false; count.textContent = `${state.text.length} / ${MAX_TEXT}`; resetResults(); });
@@ -133,7 +155,7 @@ function render(): void {
     field.addEventListener("input", () => { state.url = field.value; resetResults(); });
     form.append(el("label", { for: "content-url" }, state.mode === "image" ? t.imageUrl : t.url), field);
     if (state.mode === "image") {
-      const caption = el("textarea", { id: "caption", rows: "3", maxlength: String(MAX_TEXT), placeholder: t.captionPlaceholder, disabled: busy });
+      const caption = el("textarea", { id: "caption", rows: "3", minlength: state.audience === "public" ? "3" : "1", maxlength: String(MAX_TEXT), placeholder: t.captionPlaceholder, disabled: busy });
       caption.value = state.caption;
       caption.addEventListener("input", () => { state.caption = caption.value; resetResults(); });
       form.append(el("label", { for: "caption" }, t.caption), caption);
@@ -145,7 +167,7 @@ function render(): void {
   form.append(el("p", { class: "privacy" }, t.consent));
   const actions = el("div", { class: "form-actions" });
   if (state.running) actions.append(button(t.cancel, () => { stop(t.canceled); render(); }, { class: "ink" }));
-  else actions.append(el("button", { type: "submit", class: state.complete && !state.saved && !state.result?.tracked ? "" : "action", disabled: !state.ws || state.connecting || state.saving }, state.mode === "image" ? t.inspect : t.analyze));
+  else actions.append(el("button", { type: "submit", class: state.complete && !state.saved && !state.result?.tracked ? "" : "action", disabled: (state.audience === "newsroom" && !state.ws) || state.connecting || state.saving }, state.mode === "image" ? t.inspect : t.analyze));
   actions.append(button(t.clear, () => {
     stop(); resetResults(); state.text = ""; state.url = ""; state.caption = ""; state.pageUrl = ""; state.truncated = false;
     void chrome.storage.session.remove(captureKey); render();
@@ -161,7 +183,7 @@ function line(): HTMLElement {
   const active = phase === "search" ? 1 : phase === "verdict" ? 2 : 0;
   const node = el("ol", { class: "step-line", "aria-label": t.logTitle });
   t.steps.forEach((label, i) => {
-    const status = state.complete ? (i === 2 ? "suggested" : "done") : state.running ? (i < active ? "done" : i === active ? "active" : "waiting") : "waiting";
+    const status = state.complete ? (i === 2 && state.sent?.audience === "newsroom" ? "suggested" : "done") : state.running ? (i < active ? "done" : i === active ? "active" : "waiting") : "waiting";
     node.append(el("li", { class: status, ...(status === "active" ? { "aria-current": "step" } : {}) }, el("span", { class: "disc" }, status === "done" ? icon("check") : String(i + 1).padStart(2, "0")), el("span", {}, label)));
   });
   return node;
@@ -176,6 +198,7 @@ function renderOutcome(): void {
   if (state.running) outcome.append(el("p", { class: "running", role: "status" }, t.busy));
   if (state.image) outcome.append(renderImage(state.image));
   if (state.result) outcome.append(renderTextResult(state.result));
+  if (state.publicResult) outcome.append(renderPublicResult(state.publicResult));
   if (state.complete) outcome.append(renderSave());
 }
 
@@ -222,6 +245,14 @@ function renderTextResult(result: LinkResult): HTMLElement {
     node.append(el("label", { for: "claim-to-save" }, t.claimToSave), select);
   }
   if (result.signals?.length) node.append(el("details", { class: "warning-signs" }, el("summary", {}, t.signals), ...result.signals.map((signal) => el("div", {}, el("blockquote", {}, signal.quote), el("p", {}, signal.why)))));
+  node.append(renderSources(result));
+  if (analysis?.missing) node.append(el("h3", {}, t.missing), el("p", {}, analysis.missing));
+  return node;
+}
+
+function renderSources(result: Pick<LinkResult, "results" | "analysis">): HTMLElement {
+  const node = el("div");
+  const analysis = result.analysis;
   const found = result.results || [];
   node.append(el("h2", { class: "section-title" }, t.sources), el("p", { class: "muted" }, found.length ? t.sourcesHelp : t.noSources));
   for (const source of found) {
@@ -239,7 +270,32 @@ function renderTextResult(result: LinkResult): HTMLElement {
       ...evidence.map((entry) => el("blockquote", {}, el("span", { class: "stance" }, t.stances[entry.stance] || t.stances.context), entry.quote)),
     ));
   }
-  if (analysis?.missing) node.append(el("h3", {}, t.missing), el("p", {}, analysis.missing));
+  return node;
+}
+
+function renderPublicResult(result: PublicResult): HTMLElement {
+  const node = el("section", { class: "public-result" });
+  if (result.needs_text) node.append(el("p", { class: "notice" }, t.needsText));
+  if (result.kind === "image") node.append(el("p", { class: "notice" }, t.publicImageLink));
+  if (result.days_old && result.days_old > 30) node.append(el("p", { class: "notice" }, icon("alert"), t.old));
+  if (result.published_at) node.append(el("p", { class: "muted" }, `${t.date} : ${result.published_at}`));
+  if (result.published.length) {
+    node.append(el("h2", {}, t.publicMatches), el("p", { class: "notice" }, t.publicMatchHelp));
+    const icons: Record<Verdict, Icon> = { true: "check", false: "cross", misleading: "alert", unverifiable: "help" };
+    for (const entry of result.published) {
+      if (!Object.hasOwn(t.verdicts, entry.verdict)) continue;
+      const verdict = entry.verdict as Verdict;
+      node.append(el("article", { class: `verdict published-verdict ${verdict}` },
+        el("h3", {}, entry.title),
+        el("p", { class: "published-word" }, icon(icons[verdict]), t.verdicts[verdict]),
+        el("p", { class: "suggestion" }, t.publicPublished),
+        entry.reason && el("p", {}, entry.reason),
+        el("p", { class: "suggestion" }, `${entry.newsroom.name} · ${t.publicPublishedOn} ${entry.published_at.slice(0, 10)}`),
+        link(`${config.webUrl}/verifies/${encodeURIComponent(entry.id)}`, t.readPublished),
+      ));
+    }
+  } else node.append(el("div", { class: "no-conclusion" }, el("h2", {}, icon("help"), t.publicEmpty), el("p", {}, t.publicEmptyHelp)));
+  node.append(renderSources({ results: result.results.map((source) => ({ ...source, date: source.date || undefined })) }));
   return node;
 }
 
@@ -252,6 +308,17 @@ function renderSave(): HTMLElement {
     return node;
   }
   const sent = state.sent;
+  if (!state.me || !state.ws) {
+    node.append(button(t.publicSave, () => { state.savePrompt = true; renderOutcome(); }, { class: "action", disabled: state.connecting }), el("p", { class: "privacy" }, t.publicSaveHelp));
+    if (state.savePrompt) {
+      node.append(state.me ? chooseWorkspace() : connectionControls(), button(t.dismissConnection, () => { state.savePrompt = false; renderOutcome(); }, { class: "quiet" }));
+    }
+    return node;
+  }
+  if (sent?.audience === "public") node.append(
+    el("div", { class: "identity-top" }, el("span", {}, state.me.name || state.me.email || t.name), button(t.disconnect, () => { void disconnect(); }, { class: "quiet", disabled: state.saving })),
+    chooseWorkspace(),
+  );
   if (sent && (sent.url || sent.pageUrl)) {
     const checkbox = el("input", { type: "checkbox", disabled: state.saving });
     checkbox.checked = state.includeOriginal;
@@ -266,12 +333,12 @@ function renderSave(): HTMLElement {
 function log(text: string): void { state.log.push({ time: clock.format(new Date()), text }); }
 
 async function run(): Promise<void> {
-  if (!state.ws) return;
+  if (state.audience === "newsroom" && !state.ws) return;
   let body: { text?: string; url?: string };
   try { body = checkBody(state.mode, state.text, state.url); }
   catch { state.error = t.invalidUrl; renderOutcome(); return; }
   resetResults();
-  const sent: Sent = { mode: state.mode, text: state.text, caption: state.caption, url: body.url || "", pageUrl: state.pageUrl, ws: state.ws };
+  const sent: Sent = { mode: state.mode, text: state.text, caption: state.caption, url: body.url || "", pageUrl: state.pageUrl, ws: state.ws, audience: state.audience };
   state.sent = sent; state.running = true;
   const revision = ++state.revision;
   controller = new AbortController();
@@ -280,31 +347,41 @@ async function run(): Promise<void> {
   try {
     if (sent.mode === "image") {
       state.steps[0]!.status = "running"; log(t.logs.read); renderOutcome();
-      const image = await api<ImageResult>(`${workspacePath(sent.ws)}/image-check`, body, signal);
+      const image = sent.audience === "public"
+        ? await publicApi<ImageResult>("/public/image-check", body, signal)
+        : await api<ImageResult>(`${workspacePath(sent.ws)}/image-check`, body, signal);
       if (revision !== state.revision) return;
       state.image = image; state.steps[0]!.status = "done";
       if (sent.caption.trim()) body = { text: sent.caption.trim() };
     }
     if (sent.mode !== "image" || sent.caption.trim()) {
-      let result: LinkResult | null = null;
-      await stream(`${workspacePath(sent.ws)}/link-check`, body, (event) => {
+      if (sent.audience === "public") {
+        state.steps[1]!.status = "running"; log(t.publicWorking); renderOutcome();
+        const result = await publicApi<PublicResult>("/public/check", body, signal);
         if (revision !== state.revision) return;
-        if (event.event === "step") {
-          const step = event.data as Step;
-          const index = keys.indexOf(step.key);
-          if (index >= 0) state.steps[index] = step;
-          if (step.status === "running") log(t.logs[step.key] || t.busy);
-          else if (step.summary && step.key !== "verdict") log(step.summary);
-          renderOutcome();
-        } else if (event.event === "result") result = event.data as LinkResult;
-        else if (event.event === "error") throw new ApiError(500, (event.data as { code?: string }).code || "failed");
-      }, signal);
-      if (!result) throw new Error("incomplete");
-      if (revision !== state.revision) return;
-      state.result = result;
-      const value = result as LinkResult;
-      const cited = new Set(value.analysis?.evidence?.map((entry) => entry.result) || []);
-      state.picked = new Set((value.results || []).filter((source) => cited.has(source.n)).map((source) => httpUrl(source.url)).filter((url): url is string => !!url));
+        state.publicResult = result;
+        log(t.publicSourcesFound(result.results.length));
+      } else {
+        let result: LinkResult | null = null;
+        await stream(`${workspacePath(sent.ws)}/link-check`, body, (event) => {
+          if (revision !== state.revision) return;
+          if (event.event === "step") {
+            const step = event.data as Step;
+            const index = keys.indexOf(step.key);
+            if (index >= 0) state.steps[index] = step;
+            if (step.status === "running") log(t.logs[step.key] || t.busy);
+            else if (step.summary && step.key !== "verdict") log(step.summary);
+            renderOutcome();
+          } else if (event.event === "result") result = event.data as LinkResult;
+          else if (event.event === "error") throw new ApiError(500, (event.data as { code?: string }).code || "failed");
+        }, signal);
+        if (!result) throw new Error("incomplete");
+        if (revision !== state.revision) return;
+        state.result = result;
+        const value = result as LinkResult;
+        const cited = new Set(value.analysis?.evidence?.map((entry) => entry.result) || []);
+        state.picked = new Set((value.results || []).filter((source) => cited.has(source.n)).map((source) => httpUrl(source.url)).filter((url): url is string => !!url));
+      }
     }
     if (revision === state.revision) { state.complete = true; announce.textContent = t.steps[2]; }
   } catch (error) {
@@ -315,12 +392,13 @@ async function run(): Promise<void> {
 }
 
 async function save(): Promise<void> {
-  const sent = state.sent;
-  if (!sent || !state.complete || state.saving || state.uncertainSave) return;
+  if (!state.sent || !state.complete || state.saving || state.uncertainSave) return;
+  if (!state.me || !state.ws) { state.savePrompt = true; renderOutcome(); return; }
+  const sent = state.sent = { ...state.sent, ws: state.ws };
   state.saving = true; state.error = ""; render();
   try {
     if (!state.saved) {
-      const title = state.result?.claims?.[state.claim] || sent.caption.trim() || state.result?.title || sent.text || sent.url;
+      const title = state.result?.claims?.[state.claim] || sent.caption.trim() || state.result?.title || state.publicResult?.title || sent.text || sent.url;
       const body = [state.result?.summary, sent.text, sent.caption, sent.url, sent.pageUrl].filter(Boolean).join("\n\n").slice(0, 4000);
       const made = await api<{ item_id: string; ref: string | null }>(`${workspacePath(sent.ws)}/copilot/act`, { kind: "create_claim", title: title.slice(0, 300), body, origin: "other" });
       if (!made.item_id) throw new Error("incomplete");
@@ -338,6 +416,10 @@ async function save(): Promise<void> {
   } catch (error) {
     state.uncertainSave = !(error instanceof ApiError) || error.status === 0 || error.status >= 500;
     state.error = state.uncertainSave ? t.saveUncertain : t.saveFailed;
+    if (error instanceof ApiError && [401, 403].includes(error.status)) {
+      state.me = null; state.ws = ""; state.savePrompt = true; state.authError = t.errors.unauthorized;
+      state.error = t.errors.unauthorized;
+    }
   } finally {
     state.saving = false; render();
     if (queuedCapture) {
@@ -373,7 +455,7 @@ async function start(): Promise<void> {
   const stored: unknown = (await chrome.storage.session.get(captureKey))[captureKey];
   if (validCapture(stored)) applyCapture(stored);
   else if (stored) await chrome.storage.session.remove(captureKey);
-  render(); await connect();
+  render();
 }
 
 void start().catch(() => { root.replaceChildren(el("p", { class: "notice", role: "alert" }, t.errors.failed)); });

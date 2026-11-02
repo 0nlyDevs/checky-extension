@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import { api, ApiError, forgetToken } from "./api.ts";
+import { api, ApiError, forgetToken, publicApi } from "./api.ts";
 
 const originalFetch = globalThis.fetch;
 const session: Record<string, unknown> = {};
@@ -56,4 +56,26 @@ test("a network error never retries a dossier creation", async () => {
   };
   await assert.rejects(api("/workspaces/test/copilot/act", { kind: "create_claim" }), (error: unknown) => error instanceof ApiError && error.status === 0);
   assert.equal(calls.filter((call) => call.init.method === "POST").length, 1);
+});
+
+test("public checks never read session storage or call the token endpoint", async () => {
+  globalThis.chrome = undefined as unknown as typeof chrome;
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return Response.json({ published: [], results: [] });
+  };
+  assert.deepEqual(await publicApi("/public/check", { text: "Une affirmation" }), { published: [], results: [] });
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0]?.url.endsWith("/api/v1/public/check"));
+  assert.equal(calls[0]?.init.credentials, "omit");
+  assert.equal((calls[0]?.init.headers as Record<string, string>).Authorization, undefined);
+  await assert.rejects(publicApi("/workspaces/private/copilot/act", {}), /invalid_public_path/);
+});
+
+test("anonymous errors never trigger an authenticated fallback or clear a private token", async () => {
+  session["fanilo-auth"] = { value, expiresAt: Date.now() + 100_000 };
+  globalThis.fetch = async (url, init = {}) => { calls.push({ url: String(url), init }); return Response.json({}, { status: 401 }); };
+  await assert.rejects(publicApi("/public/check", { text: "Une affirmation" }), (error: unknown) => error instanceof ApiError && error.status === 401);
+  assert.equal(calls.length, 1);
+  assert.ok(session["fanilo-auth"]);
 });

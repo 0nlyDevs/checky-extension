@@ -11,7 +11,7 @@ It follows the existing « Le signal clair » identity in `fanilo-base/apps/web/
 
 ```
 FANILO                           Open desk
-Verify here.                     Identity / workspace
+Verify here.                     Public access / optional newsroom
 [ Text | Link | Image ]
 [ Selected content, editable              ]
 Source and transmission notice
@@ -24,3 +24,7 @@ Work log / source passages / cautious result
 Before implementation, checked against the brief: this is a contextual tool, so there is
 no landing-page hero, metric tiles, decorative illustration or marketing copy. The existing
 numbered line, meaningful evidence and explicit user confirmation carry the design.
+
+Public checks work immediately without a connection section. Optional connection is offered at
+the save action, preserving the result. Related published verdicts use solid borders and include
+the full claim, newsroom and date; novel public claims get sources, never a new AI truth label.

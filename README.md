@@ -1,7 +1,8 @@
 # FANILO — Vérifier ici
 
 Check selected text, a link or an image without leaving the page. FANILO opens beside it,
-shows the evidence and suggests a conclusion. A journalist still decides what to publish.
+shows sources and related published verifications. **No account is needed.** A journalist still
+decides what to publish; a signed-in newsroom mode also offers AI-assisted analysis.
 
 The extension connects to the same newsroom API as the [web desk](https://github.com/0nlyDevs/fanilo-base)
 and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface copy is French.
@@ -10,9 +11,12 @@ and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface co
 
 - Select text → right-click **Vérifier ce texte avec FANILO** → review the captured passage → verify.
 - Right-click a public link or image, or paste its URL in the panel.
-- Sign in on the FANILO website, then refresh the extension's connection and choose a newsroom.
+- Use public text/link checks and image examination immediately, without signing in or fetching a token.
+- Read related published verdicts with their claim, newsroom and date. A related claim is not an
+  automatic verdict on your passage. For a new topic, examine the external sources; no verdict is invented.
 - Watch the numbered line: **01 L’affirmation → 02 Les éléments → 03 La conclusion**.
-- Read dated sources, checked quotations and warning signs. AI conclusions are dashed suggestions.
+- Optional newsroom mode: sign in on FANILO, choose a newsroom and get checked quotations,
+  warning signs and AI conclusions displayed as dashed suggestions.
 - Examine image metadata and generator markers, with explicit uncertainty and reverse-search links.
 - Save a dossier only after confirmation, with the original links and selected evidence. Failed
   source attachments can be retried without creating another dossier. The extension never confirms
@@ -36,11 +40,18 @@ npm run build
 2. Enable **Developer mode** and choose **Load unpacked**.
 3. Select this repository's **`dist/`** directory, not the repository root.
 4. Pin FANILO. Click its icon or use the right-click menu on a web page.
-5. Sign in at https://fanilo-mg.vercel.app in the same browser profile; click
-   **Actualiser la connexion** in the extension and choose your newsroom.
+5. Verify text, a link or an image directly. No login is needed.
 
-The build is configured for the production web and API URLs. The API needs the `image-check`
-endpoint from `fanilo-base`; text verification uses the existing `link-check` endpoint.
+To save a dossier, click **Enregistrer dans une rédaction**. Only then is connection offered.
+Sign in at https://fanilo-mg.vercel.app in the same browser profile, click **Actualiser la connexion**
+and choose your newsroom. The public result stays visible; nothing is saved until you confirm.
+**Ma rédaction** opens the optional authenticated analysis mode. **Continuer sans compte** returns
+to public checks. Public mode does not probe your website session even if you are already signed in.
+
+The build is configured for the production web and API URLs. The API needs `/public/check` and
+`/public/image-check` from `fanilo-base`. Private newsroom mode uses the authenticated `link-check`
+and `image-check` endpoints. If the server is not updated, public checks show an availability error;
+they never silently send the content through another audience's endpoint.
 This repository does not publish to a browser store. Edge and Brave need manual validation;
 if the browser cannot open a side panel, the extension tries its own tab instead.
 
@@ -71,7 +82,7 @@ The manifest's host permissions are generated from exactly those two origins.
 | `contextMenus` | Receive only the selection, image URL or link chosen with a right-click |
 | `sidePanel` | Show the verification beside the page |
 | `storage` | Keep short-lived authentication and capture handoff in `storage.session` |
-| FANILO web/API origins | Fetch the existing session JWT and call the newsroom API |
+| FANILO web/API origins | Call public checks; obtain a session JWT only after an explicit optional connection |
 
 There are **no content scripts**, no access to all sites, no cookie-reading permission, no
 clipboard monitoring, no browsing history and no external messaging. Website selection is
@@ -85,10 +96,18 @@ and live only in session storage. No selected content, history or credentials ar
 The panel previews the content and waits for **Vérifier ce contenu** or **Examiner l’image** before
 sending it. A selected passage is sent as text only; FANILO does not silently analyze the rest of
 its page. The page's URL is retained as provenance and is attached only when saving a dossier.
-The backend and AI providers process submitted text. The image endpoint downloads public images;
-it forwards their bytes to a pixel detector only when the operator explicitly enables a validated
-service. Do not submit confidential material. Reverse-image services receive the image URL only
-after you click their link.
+Public text checks send a bounded search query to search services and compare it with published
+verdicts; they do not call an LLM or read private dossiers. Private newsroom checks may use AI
+providers. The image endpoint downloads public images; it forwards bytes to a pixel detector only
+when the operator explicitly enables a validated service. Anonymous detector access has an
+additional, separate opt-in. Do not submit confidential material. Reverse-image services receive
+the image URL only after you click their link.
+
+The public text/image endpoints share per-process limits: 12 requests per address per 10 minutes,
+1,000 requests per 24-hour budget period, and two concurrent checks. Inputs are bounded; images
+are limited to 5 MB and 20 MP. An image with a caption uses two requests. These in-memory budgets
+are not distributed; multi-worker deployments need a shared edge limiter. Limits are configurable
+server-side with `PUBLIC_CHECKS_PER_WINDOW`, `PUBLIC_CHECKS_PER_DAY` and `PUBLIC_CHECKS_CONCURRENCY`.
 
 Limitations: protected pages/images, `blob:`/`data:` images, screenshots, OCR, Firefox and Safari
 are not supported by this version. The panel can verify a manually entered image caption, but
@@ -117,9 +136,12 @@ uv run --with playwright python tests/e2e.py
 ```
 
 The browser test loads the actual built extension in a fresh Chromium profile. Its local HTTP
-fixtures exercise credentialed cookie-based login, explicit content confirmation, streamed
-results, safe rendering, dossier creation and retry, cautious image hints and interrupted
-streams. Fixtures do not call AI services or spend credits. Screenshots go to `test-results/`.
+fixtures first verify text and images anonymously, asserting that no token request is made.
+They also exercise optional cookie-based login while preserving the public result, explicit
+content confirmation, private streamed results, safe rendering, dossier creation and retry,
+cautious image hints and interrupted streams. They ensure private failures never silently
+fall back to public processing. Fixtures do not call AI services or spend credits. Screenshots
+go to `test-results/`.
 
 Before distribution, also test a real context-menu click, side-panel opening, production login,
 expired sessions, real public image URLs, and Edge/Brave's cookie and panel behaviour. No browser

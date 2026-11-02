@@ -42,6 +42,8 @@ main { max-width: 620px; margin: auto; padding: 24px 20px 32px; }
 .connection .button-row { display: grid; gap: 8px; }
 .connection details { margin-top: 12px; color: var(--muted); font-size: .875rem; }
 .identity { border-block: 1px solid var(--rule); padding: 12px 0 16px; margin-bottom: 24px; }
+.public-access { border-block: 1px solid var(--rule); padding: 10px 0; margin-bottom: 24px; }
+.public-access p { margin-bottom: 0; }
 .identity-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .875rem; }
 .identity-top > span { font-weight: 650; }
 .workspace-row { margin-top: 8px; }
@@ -87,6 +89,9 @@ summary { cursor: pointer; font-weight: 650; min-height: 28px; }
 .verdict.false { background: var(--false-soft); color: var(--false-ink); }
 .verdict.misleading { background: var(--misleading-soft); color: var(--misleading-ink); }
 .verdict.unverifiable { background: var(--unknown-soft); color: var(--unknown-ink); }
+.published-verdict { border-style: solid; margin: 16px 0; }
+.published-verdict h3 { margin-top: 0; font-size: 1.125rem; }
+.published-word { display: flex; align-items: center; gap: 8px; font-weight: 750; font-size: 1.25rem; }
 .suggestion { font-size: .875rem; }
 .no-conclusion { border: 2px dashed var(--edge); padding: 16px; }
 .no-conclusion h2 { font-size: 1.25rem; }
