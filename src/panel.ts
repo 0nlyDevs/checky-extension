@@ -261,13 +261,12 @@ function renderOutcome(): void {
 function renderImage(result: ImageResult): HTMLElement {
   const facts = result.image;
   const detector = result.detector;
-  const stateIcon: Icon = result.assessment === "detected" ? "alert" : result.assessment === "none" ? "check" : "help";
   const why = facts.ai_markers.length ? t.imageWhy.markers
     : detector.status !== "assessed" ? t.imageWhy.noDetector
     : detector.assessment === "detected" ? t.imageWhy.detected : detector.assessment === "none" ? t.imageWhy.none : t.imageWhy.between;
   const resultNode = el("section", { class: "image-result", "aria-labelledby": "image-result-title" },
     el("h2", { id: "image-result-title" }, icon("image"), t.imageTitle),
-    el("div", { class: `image-assessment ${result.assessment}` }, icon(stateIcon), el("h3", {}, t.imageStates[result.assessment]), el("p", {}, why)),
+    el("div", { class: `image-assessment ${result.assessment}` }, icon("image"), el("h3", {}, t.imageStates[result.assessment]), el("p", {}, why)),
     detector.status === "assessed" && typeof detector.score === "number" && renderScore(detector.score, detector.assessment || "inconclusive", detector.model),
     el("p", { class: "notice" }, t.imageDisclaimer),
     el("h3", {}, t.metadata), el("p", { class: "muted" }, `${facts.width} × ${facts.height} · ${facts.format}`),
