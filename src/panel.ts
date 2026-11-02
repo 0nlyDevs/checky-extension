@@ -258,23 +258,39 @@ function renderOutcome(): void {
 
 function renderImage(result: ImageResult): HTMLElement {
   const facts = result.image;
-  const stateIcon: Icon = result.assessment === "detected" ? "alert" : "help";
+  const detector = result.detector;
+  const stateIcon: Icon = result.assessment === "detected" ? "alert" : result.assessment === "none" ? "check" : "help";
+  const why = facts.ai_markers.length ? t.imageWhy.markers
+    : detector.status !== "assessed" ? t.imageWhy.noDetector
+    : detector.assessment === "detected" ? t.imageWhy.detected : detector.assessment === "none" ? t.imageWhy.none : t.imageWhy.between;
   const resultNode = el("section", { class: "image-result", "aria-labelledby": "image-result-title" },
     el("h2", { id: "image-result-title" }, icon("image"), t.imageTitle),
-    el("div", { class: "image-assessment" }, icon(stateIcon), el("h3", {}, t.imageStates[result.assessment])),
+    el("div", { class: `image-assessment ${result.assessment}` }, icon(stateIcon), el("h3", {}, t.imageStates[result.assessment]), el("p", {}, why)),
+    detector.status === "assessed" && typeof detector.score === "number" && renderScore(detector.score, detector.assessment || "inconclusive", detector.model),
     el("p", { class: "notice" }, t.imageDisclaimer),
     el("h3", {}, t.metadata), el("p", { class: "muted" }, `${facts.width} × ${facts.height} · ${facts.format}`),
     facts.ai_markers.length ? el("div", {}, el("h4", {}, t.markers), el("ul", {}, ...facts.ai_markers.map((marker) => el("li", {}, marker)))) : el("p", {}, t.noMarkers),
     facts.content_credentials && el("p", { class: "notice" }, t.credentials),
     el("h3", {}, t.detector), el("p", {}, t.detectorStates[result.detector.status]),
     result.detector.status === "assessed" && el("p", {}, t.detectorSignals[result.detector.assessment || "inconclusive"]),
-    result.detector.model && el("p", { class: "muted" }, result.detector.model),
     el("p", { class: "muted" }, t.imageContext),
     el("h3", {}, t.reverse), el("p", { class: "muted" }, result.source === "file" ? t.reverseFileHelp : t.reverseHelp),
     el("div", { class: "reverse-links" }, ...result.reverse_search.map((entry) => link(entry.url, entry.name))),
     result.url && link(result.url, t.imageLink),
   );
   return resultNode;
+}
+
+/** The detector's own score, as it returned it: a figure and a bar with the two cut-offs. */
+function renderScore(score: number, assessment: ImageResult["assessment"], model?: string | null): HTMLElement {
+  const percent = Math.round(Math.min(1, Math.max(0, score)) * 100);
+  const fill = el("span");
+  fill.style.width = `${percent}%`;
+  return el("div", { class: `detector-score ${assessment}` },
+    el("p", { class: "score-figure" }, el("strong", {}, `${percent}\u202f%`), el("span", {}, `${t.score}${model ? ` · ${t.detectorName(model)}` : ""}`)),
+    el("div", { class: "score-bar", role: "img", "aria-label": t.scoreBar(percent) }, fill),
+    el("p", { class: "muted" }, t.scoreHelp),
+  );
 }
 
 function renderTextResult(result: LinkResult): HTMLElement {

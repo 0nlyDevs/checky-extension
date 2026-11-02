@@ -154,17 +154,17 @@ class Fixture(BaseHTTPRequestHandler):
             return self.send(raw, content_type="text/event-stream")
         if self.path.endswith("/image-check/file"):
             return self.send({
-                "url": None, "source": "file", "assessment": "none",
+                "url": None, "source": "file", "assessment": "inconclusive",
                 "image": {"width": 1, "height": 1, "format": "PNG", "ai_markers": [], "content_credentials": False, "exif": {}},
-                "detector": {"status": "not_configured", "assessment": "inconclusive", "model": None},
+                "detector": {"status": "not_configured", "assessment": "inconclusive", "model": None, "score": None},
                 "reverse_search": [{"name": "TinEye", "url": "https://tineye.com/"}],
                 "limitations": ["absence_of_markers_does_not_prove_authenticity"],
             })
         if self.path.endswith("/image-check"):
             return self.send({
-                "url": data["url"], "assessment": "none",
+                "url": data["url"], "assessment": "detected",
                 "image": {"width": 800, "height": 600, "format": "JPEG", "ai_markers": [], "content_credentials": True, "exif": {}},
-                "detector": {"status": "not_configured", "assessment": "inconclusive", "model": None},
+                "detector": {"status": "assessed", "assessment": "detected", "model": "sightengine-genai", "score": 0.987},
                 "reverse_search": [{"name": "Google Lens", "url": "https://lens.google.com/uploadbyurl?url=https%3A%2F%2Fimage.example%2Fa.jpg"}],
                 "limitations": ["absence_of_markers_does_not_prove_authenticity"],
             })
@@ -252,10 +252,15 @@ def main():
 
                 capture(panel, "", "image", "https://image.example/a.jpg")
                 panel.get_by_role("button", name="Examiner l’image", exact=True).click()
-                expect(panel.get_by_role("heading", name="Aucun indice détecté", exact=True)).to_be_visible()
-                expect(panel.get_by_text("Aucun détecteur de pixels configuré. Seules les métadonnées ont été examinées.", exact=True)).to_be_visible()
+                expect(panel.get_by_role("heading", name="Indices détectés", exact=True)).to_be_visible()
+                expect(panel.locator(".image-assessment.detected")).to_be_visible()
+                # The detector's own score, rounded, and labelled as its score rather than a probability.
+                expect(panel.locator(".detector-score strong")).to_have_text("99\u202f%")
+                expect(panel.get_by_role("img", name="Score du détecteur : 99 sur 100")).to_be_visible()
+                expect(panel.locator(".detector-score")).to_contain_text("Sightengine")
+                expect(panel.locator(".detector-score")).to_contain_text("pas une probabilité")
+                assert panel.locator(".image-assessment").evaluate("node => getComputedStyle(node).backgroundColor") != panel.locator("main").evaluate("node => getComputedStyle(node).backgroundColor")
                 expect(panel.get_by_text("Structure Content Credentials repérée, signature non vérifiée. Sa présence ne prouve pas l’authenticité.", exact=True)).to_be_visible()
-                assert not panel.locator("#outcome").inner_text().count("%")
                 assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public image examination must not call authentication"
                 panel.screenshot(path=str(OUT / "panel-image.png"), full_page=True)
 
@@ -266,7 +271,11 @@ def main():
                 assert not [r for r in REQUESTS if r[1].endswith("/image-check/file")], "Choosing a file must not send it"
                 panel.screenshot(path=str(OUT / "panel-image-file-chosen.png"), full_page=True)
                 panel.get_by_role("button", name="Examiner l’image", exact=True).click()
-                expect(panel.get_by_role("heading", name="Aucun indice détecté", exact=True)).to_be_visible()
+                # No detector ran and the file has no metadata: never green, never a percentage.
+                expect(panel.get_by_role("heading", name="Analyse non concluante", exact=True)).to_be_visible()
+                expect(panel.locator(".image-assessment.inconclusive")).to_contain_text("aucun détecteur n’a analysé les pixels")
+                expect(panel.get_by_text("Aucun détecteur de pixels configuré. Seules les métadonnées ont été examinées.", exact=True)).to_be_visible()
+                assert "%" not in panel.locator("#outcome").inner_text()
                 sent = [r for r in REQUESTS if r[1] == "/api/v1/public/image-check/file"]
                 assert len(sent) == 1 and sent[0][2] == {"type": "image/png", "bytes": PNG}, sent
                 expect(panel.get_by_text("L’image a été envoyée comme fichier : ces services ne reçoivent rien de Checky. Ouvrez-en un et déposez-y l’image vous-même.", exact=True)).to_be_visible()

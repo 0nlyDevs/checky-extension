@@ -8,7 +8,7 @@
 - Public text results show published verdict candidates and external sources, not new AI verdicts. Connection is optional for newsroom analysis and saving; preserve a public result during optional connection.
 - Public AI only extracts literal claims/entities and grounded search queries. Stream preparation/search/reading stages; never report blocked services as an empty successful search or copied articles as independent confirmation.
 - JWTs and captures belong in `chrome.storage.session`, never local/sync storage. Do not expose external messaging or web-accessible resources.
-- AI verdicts are suggestions, dashed and always icon + word. Image provenance and factual truth are separate. No fabricated confidence percentages or claims of authenticity from missing markers.
+- AI verdicts are suggestions, dashed and always icon + word. Image provenance and factual truth are separate. Image results are coloured by assessment (red detected, green none, blue inconclusive) with icon and word; green only when a pixel detector actually scored low. Show a percentage only when a detector returned one, labelled as that detector's score, never as a probability; never invent one, and no claims of authenticity from missing markers.
 - Follow FANILO's « Le signal clair »: chalk `#f1f2ec`, ink `#171a18`, citron `#d7f45b` for the primary action, Archivo and Atkinson Hyperlegible Next, flat rules, numbered verification flow.
 - Run `npm run check`, `npm test` and `npm run build`; test the built extension in Chromium before pushing.
 - Commits: one English Conventional Commit subject, no body or attribution trailer.

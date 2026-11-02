@@ -30,6 +30,9 @@ and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface co
 - Optional newsroom mode: sign in on Checky, choose a newsroom and get checked quotations,
   warning signs and AI conclusions displayed as dashed suggestions.
 - Examine image metadata and generator markers, with explicit uncertainty and reverse-search links.
+- See the image result in colour (red: indices, green: the detector scored low, blue: not
+  conclusive) and, when a pixel detector ran, its own score as a figure and a bar with the 10 % and
+  90 % cut-offs. Without a detector, missing metadata is never shown as « aucun indice ».
 - Save a dossier only after confirmation, with the original links and selected evidence. Failed
   source attachments can be retried without creating another dossier. The extension never confirms
   or publishes a verdict.
