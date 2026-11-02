@@ -290,7 +290,15 @@ def main():
                 expect(panel.get_by_role("link", name="Ouvrir l’image d’origine")).to_have_count(0)
                 assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public file examination must not call authentication"
                 panel.screenshot(path=str(OUT / "panel-image-file.png"), full_page=True)
-                panel.get_by_role("button", name="Retirer", exact=True).click()
+                # Dropping a file that is not an image replaces the result on screen with one format error.
+                panel.evaluate("""() => {
+                  const data = new DataTransfer();
+                  data.items.add(new File(["notes"], "notes.txt", { type: "text/plain" }));
+                  document.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+                }""")
+                expect(panel.get_by_role("alert")).to_have_count(1)
+                expect(panel.get_by_text("Aucun détecteur de pixels configuré. Seules les métadonnées ont été examinées.", exact=True)).to_have_count(0)
+                expect(panel.get_by_role("group", name="Image choisie")).to_have_count(0)
                 panel.locator("#image-file").set_input_files({"name": "lourde.png", "mimeType": "image/png", "buffer": b"\0" * (5 * 1024 * 1024 + 1)})
                 expect(panel.get_by_role("alert")).to_contain_text("dépasse 5 Mo")
                 panel.get_by_role("button", name="Texte", exact=True).click()

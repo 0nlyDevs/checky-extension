@@ -591,8 +591,11 @@ async function start(): Promise<void> {
     const file = imageIn(event.dataTransfer);
     if (!event.dataTransfer?.types.includes("Files")) return;
     event.preventDefault();
-    if (file) takeImage(file);
-    else { state.fileError = t.fileErrors.type; state.mode = "image"; render(); }
+    if (file) { takeImage(file); return; }
+    // Like a dropped image, a refused file replaces what was on screen, so its error is never shown beside an older one.
+    if (state.running || state.saving) return;
+    stop(); resetResults(); state.mode = "image"; state.truncated = false;
+    setFile(null); state.fileError = t.fileErrors.type; render();
   });
   const window = await chrome.windows.getCurrent();
   captureKey = `capture:${window.id}`;
