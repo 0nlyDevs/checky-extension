@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
 import { defineConfig, loadEnv } from "vite";
+import { buildSprite } from "./src/lib/sprite.ts";
 
 function origin(value: string): string {
   const url = new URL(value);
@@ -19,6 +20,9 @@ export default defineConfig(({ mode }) => {
     base: "./",
     define: { __FANILO_CONFIG__: JSON.stringify({ webUrl, apiUrl }) },
     plugins: [{
+      name: "fanilo-sprite",
+      transformIndexHtml: (html: string) => html.replace("<!-- icon-sprite -->", buildSprite(import.meta.dirname)),
+    }, {
       name: "fanilo-manifest",
       generateBundle() {
         for (const [scope, family] of [["@fontsource-variable", "bricolage-grotesque"], ["@fontsource", "cormorant-garamond"]]) {
