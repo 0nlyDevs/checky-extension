@@ -212,9 +212,13 @@ function render(): void {
   }
   if (state.pageUrl) form.append(el("div", { class: "source-origin" }, el("span", {}, t.page), link(state.pageUrl, hostname(state.pageUrl))));
   if (state.truncated) form.append(el("p", { class: "notice", role: "status" }, t.truncated));
-  form.append(el("p", { class: "privacy" }, t.privacy), state.mode === "image" ? el("p", { class: "privacy" }, t.privacyImage) : el("span"));
-  form.append(el("p", { class: "privacy" }, t.consent));
-  if (state.audience === "public") form.append(el("p", { class: "privacy" }, t.publicAiPrivacy));
+  // One line before the action; what is sent, and to whom, stays one click away.
+  form.append(el("p", { class: "privacy" }, t.consent), el("details", { class: "privacy-details" },
+    el("summary", {}, t.privacyTitle),
+    el("p", { class: "privacy" }, t.privacy),
+    state.mode === "image" && el("p", { class: "privacy" }, t.privacyImage),
+    state.audience === "public" && el("p", { class: "privacy" }, t.publicAiPrivacy),
+  ));
   const actions = el("div", { class: "form-actions" });
   if (state.running) actions.append(button(t.cancel, () => { stop(t.canceled); render(); }, { class: "ink" }));
   else actions.append(el("button", { type: "submit", class: state.complete && !state.saved && !state.result?.tracked ? "" : "action", disabled: (state.audience === "newsroom" && !state.ws) || state.connecting || state.saving }, state.mode === "image" ? t.inspect : t.analyze));
@@ -273,8 +277,9 @@ function renderImage(result: ImageResult): HTMLElement {
     el("h3", {}, t.metadata), el("p", { class: "muted" }, `${facts.width} × ${facts.height} · ${facts.format}`),
     facts.ai_markers.length ? el("div", {}, el("h4", {}, t.markers), el("ul", {}, ...facts.ai_markers.map((marker) => el("li", {}, marker)))) : el("p", {}, t.noMarkers),
     facts.content_credentials && el("p", { class: "notice" }, t.credentials),
-    el("h3", {}, t.detector), el("p", {}, t.detectorStates[result.detector.status]),
-    result.detector.status === "assessed" && el("p", {}, t.detectorSignals[result.detector.assessment || "inconclusive"]),
+    // With a score, the block above already says what the detector found: no second telling.
+    detector.status !== "assessed" && el("h3", {}, t.detector),
+    detector.status !== "assessed" && el("p", {}, t.detectorStates[detector.status]),
     el("p", { class: "muted" }, t.imageContext),
     el("h3", {}, t.reverse), el("p", { class: "muted" }, result.source === "file" ? t.reverseFileHelp : t.reverseHelp),
     el("div", { class: "reverse-links" }, ...result.reverse_search.map((entry) => link(entry.url, entry.name))),
@@ -426,6 +431,14 @@ function renderSave(): HTMLElement {
   return node;
 }
 
+/** The form is taller than a side panel: scroll to where the work and the result appear. */
+function revealOutcome(): void {
+  requestAnimationFrame(() => {
+    if (outcome.getBoundingClientRect().top < innerHeight * 0.6) return;
+    outcome.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
+}
+
 function log(text: string): void { state.log.push({ time: clock.format(new Date()), text }); }
 
 async function run(): Promise<void> {
@@ -442,7 +455,7 @@ async function run(): Promise<void> {
   const revision = ++state.revision;
   controller = new AbortController();
   const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(180_000)]);
-  announce.textContent = t.busy; render();
+  announce.textContent = t.busy; render(); revealOutcome();
   try {
     if (sent.mode === "image") {
       state.steps[0]!.status = "running"; log(t.logs.read); renderOutcome();

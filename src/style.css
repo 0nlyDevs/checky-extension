@@ -186,3 +186,6 @@ footer { text-align: center; border-top: 1px solid var(--rule); padding: 18px; f
 .detector-score .score-bar { background: var(--image-1); }
 .detector-score .score-bar > span { background: var(--image-strong); }
 .detector-score .muted { margin: 0; }
+.privacy-details { margin-top: 4px; font-size: .875rem; color: var(--muted); }
+.privacy-details summary { display: flex; align-items: center; min-height: 44px; color: var(--ink); }
+.privacy-details[open] summary { margin-bottom: 4px; }

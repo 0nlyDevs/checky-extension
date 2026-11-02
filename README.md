@@ -118,7 +118,8 @@ are discarded. Preparation uses configured Groq/Gemini/NVIDIA providers only, ne
 fallback. Validated plans are reused in bounded process memory for 10 minutes; persistent gateway
 response caching is disabled for this preparation. AI call metadata, not the prompt, is logged.
 Disable preparation with `PUBLIC_PREPARATION_ENABLED=false`. Private newsroom checks may use AI
-providers for their existing analysis. The image endpoint downloads public images, or receives the file you chose through
+providers for their existing analysis. In production the pixel detector is Sightengine: examined images are sent to it, and the panel says so
+under « Ce qui est envoyé, et à qui ». The image endpoint downloads public images, or receives the file you chose through
 `/public/image-check/file` (or `/workspaces/{ws}/image-check/file` in newsroom mode), and stores
 neither; it forwards bytes to a pixel detector only
 when the operator explicitly enables a validated service. Anonymous detector access has an

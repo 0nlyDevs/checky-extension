@@ -227,8 +227,14 @@ def main():
                 capture(panel, "Madagascar quitte l’OMS")
                 expect(panel.get_by_label("L’affirmation à vérifier", exact=True)).to_have_value("Madagascar quitte l’OMS")
                 assert not [r for r in browser_requests if r[0] == "POST"], "Capture must not start analysis automatically"
+                expect(panel.get_by_text("Seuls le contenu affiché", exact=False)).to_be_hidden()
+                panel.get_by_text("Ce qui est envoyé, et à qui", exact=True).click()
+                expect(panel.get_by_text("Seuls le contenu affiché", exact=False)).to_be_visible()
+                panel.get_by_text("Ce qui est envoyé, et à qui", exact=True).click()
                 panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
                 expect(panel.get_by_role("heading", name="Vérifications publiées sur des sujets proches", exact=True)).to_be_visible()
+                # The result appears below a tall form: the panel brings the work into view.
+                panel.wait_for_function("document.querySelector('#outcome').getBoundingClientRect().top < innerHeight")
                 payload = next(r[2] for r in REQUESTS if r[1] == "/api/v1/public/check/stream")
                 assert payload == {"text": "Madagascar quitte l’OMS"}
                 expect(panel.locator("#outcome")).to_contain_text("<img src=x onerror=alert(1)>")
@@ -259,6 +265,8 @@ def main():
                 expect(panel.get_by_role("img", name="Score du détecteur : 99 sur 100")).to_be_visible()
                 expect(panel.locator(".detector-score")).to_contain_text("Sightengine")
                 expect(panel.locator(".detector-score")).to_contain_text("pas une probabilité")
+                expect(panel.get_by_role("heading", name="Analyse des pixels", exact=True)).to_have_count(0)
+                expect(panel.locator(".privacy-details")).to_contain_text("Sightengine")
                 assert panel.locator(".image-assessment").evaluate("node => getComputedStyle(node).backgroundColor") != panel.locator("main").evaluate("node => getComputedStyle(node).backgroundColor")
                 expect(panel.get_by_text("Structure Content Credentials repérée, signature non vérifiée. Sa présence ne prouve pas l’authenticité.", exact=True)).to_be_visible()
                 assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public image examination must not call authentication"
