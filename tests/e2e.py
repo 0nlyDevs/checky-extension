@@ -184,7 +184,8 @@ def main():
     for server in servers:
         threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
-        with sync_playwright() as p, tempfile.TemporaryDirectory(prefix="fanilo-extension-", dir="/tmp/opencode") as profile:
+        temporary_root = os.environ.get("RUNNER_TEMP") or ("/tmp/opencode" if Path("/tmp/opencode").is_dir() else None)
+        with sync_playwright() as p, tempfile.TemporaryDirectory(prefix="fanilo-extension-", dir=temporary_root) as profile:
             installed = sorted((Path.home() / ".cache/ms-playwright").glob("chromium-*/chrome-linux*/chrome"))
             executable = os.environ.get("CHROMIUM_EXECUTABLE") or (str(installed[-1]) if installed else None)
             extension = ROOT / "dist-local"
