@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
           version: (JSON.parse(readFileSync(resolve(import.meta.dirname, "package.json"), "utf8")) as { version: string }).version,
           description: "Vérifiez un texte, un lien ou les indices de génération d’une image sans quitter la page.",
           minimum_chrome_version: "116",
-          permissions: ["contextMenus", "sidePanel", "storage"],
+          permissions: ["activeTab", "contextMenus", "scripting", "sidePanel", "storage"],
           host_permissions: [...new Set([`${webUrl}/*`, `${apiUrl}/*`])],
           background: { service_worker: "background.js", type: "module" },
           action: { default_title: "Ouvrir Checky" },
