@@ -1,6 +1,6 @@
-# FANILO — Vérifier ici
+# Checky — Vérifier ici
 
-Check selected text, a link or an image without leaving the page. FANILO opens beside it,
+Check selected text, a link or an image without leaving the page. Checky opens beside it,
 shows sources and related published verifications. **No account is needed.** A journalist still
 decides what to publish; a signed-in newsroom mode also offers AI-assisted analysis.
 
@@ -9,12 +9,12 @@ and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface co
 
 ## What works
 
-- Select text → right-click **Vérifier ce texte avec FANILO** → review the captured passage → verify.
+- Select text → right-click **Vérifier ce texte avec Checky** → review the captured passage → verify.
 - Right-click a public link or image, or paste its URL in the panel.
 - Use public text/link checks and image examination immediately, without signing in or fetching a token.
 - Read related published verdicts with their claim, newsroom and date. A related claim is not an
   automatic verdict on your passage. For a new topic, examine the external sources; no verdict is invented.
-- FANILO first removes promotional tails, uses a short AI preparation to extract literal claims,
+- Checky first removes promotional tails, uses a short AI preparation to extract literal claims,
   names and dates from the whole passage, and searches up to three grounded queries. Distinctive
   names near the end are not lost to a 200-character prefix. Invalid or unavailable AI preparation
   falls back explicitly to whole-text keyword extraction, not a fabricated summary.
@@ -24,7 +24,7 @@ and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface co
   read; search snippets are not passed off as article quotations. Very similar wording is flagged
   as a possible reprise, not independent corroboration. Dates are taken from source metadata.
 - Watch the numbered line: **01 L’affirmation → 02 Les éléments → 03 La conclusion**.
-- Optional newsroom mode: sign in on FANILO, choose a newsroom and get checked quotations,
+- Optional newsroom mode: sign in on Checky, choose a newsroom and get checked quotations,
   warning signs and AI conclusions displayed as dashed suggestions.
 - Examine image metadata and generator markers, with explicit uncertainty and reverse-search links.
 - Save a dossier only after confirmation, with the original links and selected evidence. Failed
@@ -48,7 +48,7 @@ npm run build
 1. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`).
 2. Enable **Developer mode** and choose **Load unpacked**.
 3. Select this repository's **`dist/`** directory, not the repository root.
-4. Pin FANILO. Click its icon or use the right-click menu on a web page.
+4. Pin Checky. Click its icon or use the right-click menu on a web page.
 5. Verify text, a link or an image directly. No login is needed.
 
 To save a dossier, click **Enregistrer dans une rédaction**. Only then is connection offered.
@@ -68,7 +68,7 @@ If authentication does not work, check host permissions and third-party cookie s
 extension deliberately does not bypass browser privacy settings, extract cookies or ask for your
 password. Disconnecting it clears its token; signing out on the website is a separate action.
 
-## Run against a local FANILO
+## Run against a local Checky
 
 Run the web on `http://localhost:3000` and the API on `http://localhost:8000`, following the web
 repository's README. Then:
@@ -91,7 +91,7 @@ The manifest's host permissions are generated from exactly those two origins.
 | `contextMenus` | Receive only the selection, image URL or link chosen with a right-click |
 | `sidePanel` | Show the verification beside the page |
 | `storage` | Keep short-lived authentication and capture handoff in `storage.session` |
-| FANILO web/API origins | Call public checks; obtain a session JWT only after an explicit optional connection |
+| Checky web/API origins | Call public checks; obtain a session JWT only after an explicit optional connection |
 
 There are **no content scripts**, no access to all sites, no cookie-reading permission, no
 clipboard monitoring, no browsing history and no external messaging. Website selection is
@@ -103,7 +103,7 @@ and live only in session storage. No selected content, history or credentials ar
 `storage.local` or `storage.sync`.
 
 The panel previews the content and waits for **Vérifier ce contenu** or **Examiner l’image** before
-sending it. A selected passage is sent as text only; FANILO does not silently analyze the rest of
+sending it. A selected passage is sent as text only; Checky does not silently analyze the rest of
 its page. The page's URL is retained as provenance and is attached only when saving a dossier.
 Public text checks use one bounded AI call to prepare queries, then send those queries to search
 services and compare with published verdicts; they never generate a new truth verdict or read
