@@ -70,7 +70,6 @@ export const t = {
   publicMatchHelp: "Comparez les affirmations : un sujet proche ne prouve pas que le verdict s’applique au texte sélectionné.",
   publicEmpty: "Pas de verdict publié retrouvé",
   publicEmptyHelp: "Nous n’avons pas retrouvé de vérification correspondante dans les publications des rédactions utilisant Checky. Cela ne signifie pas que l’affirmation est vraie ou fausse. Les sources sont des pistes à examiner.",
-  publicPublished: "Verdict publié par une rédaction",
   readPublished: "Lire la vérification complète",
   publicImageLink: "Ce lien pointe vers une image. Ouvrez l’onglet Image pour examiner ses indices de provenance.",
   publicSave: "Enregistrer dans une rédaction",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CAPTURE_TTL, captureFromMenu, checkBody, httpUrl, imageFileProblem, MAX_IMAGE_BYTES, MAX_TEXT, middleTruncate, validCapture } from "./safety.ts";
+import { CAPTURE_TTL, captureFromMenu, checkBody, httpUrl, imageFileProblem, MAX_IMAGE_BYTES, MAX_TEXT, frenchDate, isUrlLabel, middleTruncate, validCapture } from "./safety.ts";
 
 test("reject unsafe links, credentials and browser internal schemes", () => {
   for (const url of ["javascript:alert(1)", "data:image/png,a", "file:///etc/passwd", "chrome://settings", "blob:https://site/a", "https://user:secret@example.com/a", "https://" + "a".repeat(2100)]) assert.equal(httpUrl(url), null);
@@ -44,4 +44,20 @@ test("long URLs are elided in the middle, short ones are kept", () => {
   assert.equal(short.length, 48);
   assert.ok(short.startsWith("https://news.example/") && short.endsWith("article-final") && short.includes("…"));
   assert.equal(middleTruncate("https://a.example/x"), "https://a.example/x");
+});
+
+test("only URL-shaped labels are middle-truncated", () => {
+  const url = "https://www.example.org/une/très/longue/adresse/d-article-sur-madagascar-et-l-oms?x=1";
+  const title = "Le gouvernement malgache dément officiellement le retrait de Madagascar de l’OMS";
+  assert.equal(isUrlLabel(url), true);
+  assert.equal(isUrlLabel("example.org/article/long"), true);
+  assert.equal(isUrlLabel(title), false);
+  assert.equal(isUrlLabel("site:example.org retrait OMS"), false);
+  assert.ok(middleTruncate(url).includes("…") && middleTruncate(url).length <= 48);
+  assert.equal(isUrlLabel(title) ? middleTruncate(title) : title, title);
+});
+
+test("dates read in French, odd input is left as is", () => {
+  assert.equal(frenchDate("2026-11-02T08:30:00Z").replace(/ | /g, " "), "2 nov. 2026");
+  assert.equal(frenchDate("n/a"), "n/a");
 });

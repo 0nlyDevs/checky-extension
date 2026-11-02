@@ -21,6 +21,18 @@ export function middleTruncate(text: string, max = 48): string {
   return `${text.slice(0, head)}…${text.slice(text.length - tail)}`;
 }
 
+/** True for http(s) URLs and bare domain-plus-path strings; titles and queries are not. */
+export function isUrlLabel(text: string): boolean {
+  return /^https?:\/\/\S+$/i.test(text) || /^(www\.)?([a-z0-9-]+\.)+[a-z]{2,}\/\S*$/i.test(text);
+}
+
+const dateFormat = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+/** An ISO timestamp as a French date, or the input untouched when it is not a date. */
+export function frenchDate(iso: string): string {
+  const time = Date.parse(iso);
+  return Number.isNaN(time) ? iso : dateFormat.format(time);
+}
+
 /** Never launch browser-internal URLs, data URLs or credentials from page/model content. */
 export function httpUrl(raw: string): string | null {
   if (raw.length > 2000) return null;
