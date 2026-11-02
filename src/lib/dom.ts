@@ -19,8 +19,8 @@ export function button(text: string, action: () => void, attrs: Record<string, s
   return node;
 }
 
-export type Icon = "check" | "help" | "alert" | "cross" | "external" | "image";
-const names: Record<Icon, IconName> = { check: "check", help: "question", alert: "warning", cross: "x", external: "arrow-square-out", image: "image" };
+export type Icon = "check" | "help" | "alert" | "cross" | "external" | "image" | "sparkle" | "search";
+const names: Record<Icon, IconName> = { check: "check", help: "question", alert: "warning", cross: "x", external: "arrow-square-out", image: "image", sparkle: "sparkle", search: "magnifying-glass" };
 
 export function icon(name: Icon): SVGSVGElement {
   const ns = "http://www.w3.org/2000/svg";

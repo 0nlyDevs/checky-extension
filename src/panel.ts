@@ -261,7 +261,7 @@ function renderOutcome(): void {
 function renderImage(result: ImageResult): HTMLElement {
   const facts = result.image;
   const detector = result.detector;
-  const stateIcon: Icon = result.assessment === "detected" ? "alert" : result.assessment === "none" ? "check" : "help";
+  const stateIcon: Icon = result.assessment === "detected" ? "sparkle" : result.assessment === "none" ? "image" : "search";
   const why = facts.ai_markers.length ? t.imageWhy.markers
     : detector.status !== "assessed" ? t.imageWhy.noDetector
     : detector.assessment === "detected" ? t.imageWhy.detected : detector.assessment === "none" ? t.imageWhy.none : t.imageWhy.between;

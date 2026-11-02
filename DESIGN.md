@@ -7,7 +7,7 @@ It follows the existing « Le signal clair » identity in `fanilo-base/apps/web/
 - Bricolage Grotesque carries everything; Cormorant Garamond italic 500 is reserved for verbatim passages. Both are bundled locally; there are no font network calls.
 - A single left-aligned reading column, comfortable at 360–480 px. Flat surfaces, 20 px cards, round controls, 6 px tags, no decorative shadows or gradients.
 - The characteristic element is the numbered verification line. Its numbers are actual stages, not decoration.
-- The ink primary is the one action and the active stage (its label uses `--action-foreground`). Suggestions use dashed borders and icons with words. Image results may use the four result colours (red, green, blue, amber) as long as the card says in words what was found; an image result is never labelled with a verdict word (Vrai, Faux, Trompeur, Invérifiable).
+- The ink primary is the one action and the active stage (its label uses `--action-foreground`). Suggestions use dashed borders and icons with words. Image results have their own colour family, an orchid scale taken from the pink « Madagascar Checky » of the brief (`--image-1/2/3` tints, `--image-strong` marks; light `#a8228f`, dark `#e07fcf`), distinct from the four verdict hues and checked for colour-blind separation. The tint deepens with the strength of the finding (none, inconclusive, detected), each state has its own icon (image, magnifying glass, sparkle) and its words; text stays ink. An image result never uses a verdict hue, icon or word.
 
 ```
 Checky                           Open desk
