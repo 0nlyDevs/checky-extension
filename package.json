@@ -1,0 +1,28 @@
+{
+  "name": "fanilo-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "build:local": "tsc --noEmit && vite build --mode development",
+    "check": "tsc --noEmit",
+    "test": "node --test src/lib/*.test.ts",
+    "gen:api": "openapi-typescript ../fanilo-base/packages/shared/openapi.json -o src/lib/api-schema.d.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.2.8",
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.0",
+    "@types/node": "^26.0.0",
+    "openapi-typescript": "^7.10.1",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.5"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
+  }
+}

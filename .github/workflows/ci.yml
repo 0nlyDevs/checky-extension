@@ -1,0 +1,32 @@
+name: Extension checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev
+      - uses: astral-sh/setup-uv@v6
+      - run: npm run build:local
+      - run: uv run --with playwright python -m playwright install --with-deps chromium
+      - run: uv run --with playwright python tests/e2e.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fanilo-extension
+          path: dist/

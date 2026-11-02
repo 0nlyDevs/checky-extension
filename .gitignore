@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-local/
+coverage/
+test-results/
+.env
+.env.*
+!.env.example
+*.zip
+__pycache__/
