@@ -56,3 +56,14 @@ export function link(url: string, text: string, className = ""): HTMLElement {
   if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
   return anchor;
 }
+
+/** A link that opens outside, only for http(s) URLs; anything else stays plain text. */
+export function link(url: string, text: string, className = ""): HTMLElement {
+  const safe = httpUrl(url);
+  if (!safe) return el("span", {}, text);
+  const asUrl = isUrlLabel(text);
+  const clamp = !asUrl && !className.split(" ").some((c) => c === "button" || c === "quiet-link");
+  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: [className, clamp ? "clamp" : ""].filter(Boolean).join(" "), title: asUrl ? safe : text }, asUrl ? middleTruncate(text) : text, icon("external"));
+  if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
+  return anchor;
+}
