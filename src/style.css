@@ -6,8 +6,8 @@
   --action: #0a0a0b; --action-foreground: #f3f2ee; --action-hover: #1f1f22;
   --true-soft: #e1f3e8; --true-ink: #0b6b3a; --false-soft: #fbe3e0; --false-ink: #b3231a;
   --misleading-soft: #f9ecd2; --misleading-ink: #8a5700; --unknown-soft: #e0eafb; --unknown-ink: #1d58c4;
-  /* image examination: one orchid scale (from the pink « Madagascar Checky » of the brief), never a verdict hue */
-  --image-1: #f7eaf4; --image-2: #efd3ea; --image-3: #e3b5dc; --image-strong: #a8228f;
+  /* image examination: one teal scale, never a verdict hue */
+  --image-1: #e6f3f6; --image-2: #cce7ee; --image-3: #a9d6e2; --image-strong: #04809f;
   --radius-card: 20px; --radius-control: 999px; --radius-tag: 6px;
   font-size: 16px; line-height: 1.5; color-scheme: light dark;
 }
@@ -148,7 +148,7 @@ footer { text-align: center; border-top: 1px solid var(--rule); padding: 18px; f
     --action: #f3f2ee; --action-foreground: #0a0a0b; --action-hover: #e2e1da;
     --true-soft: #0f2219; --true-ink: #3ddc84; --false-soft: #2a1311; --false-ink: #ff6a5f;
     --misleading-soft: #29200c; --misleading-ink: #ffb224; --unknown-soft: #101a2b; --unknown-ink: #6aa8ff;
-    --image-1: #1d141c; --image-2: #2c1a2a; --image-3: #43213f; --image-strong: #e07fcf; }
+    --image-1: #0f1a1d; --image-2: #13272c; --image-3: #18383f; --image-strong: #4cc9e4; }
   .work-log :focus-visible { outline-color: var(--ink); }
   .work-log ::selection { background: var(--action); color: var(--action-foreground); }
   .work-log { background: var(--soft); color: var(--ink); border: 1px solid var(--rule); }
