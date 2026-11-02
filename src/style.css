@@ -10,7 +10,7 @@
   font-size: 16px; line-height: 1.5; color-scheme: light dark;
 }
 * { box-sizing: border-box; }
-body { font-family: inherit; margin: 0; min-width: 280px; background: var(--ground); color: var(--ink); }
+body { font-family: inherit; font-size: 1rem; margin: 0; min-width: 280px; background: var(--ground); color: var(--ink); }
 button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button, .button { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--edge); border-radius: var(--radius-control); background: var(--paper); color: var(--ink); font-weight: 650; cursor: pointer; text-decoration: none; }
@@ -26,6 +26,7 @@ button.action:disabled, button.ink:disabled { background: var(--soft); border-co
 button.quiet:hover:not(:disabled), a.quiet:hover { background: transparent; color: var(--ink); }
 button.quiet:disabled { background: transparent; border-color: transparent; }
 a { color: inherit; text-underline-offset: 3px; overflow-wrap: anywhere; }
+a.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 a svg { width: 14px; height: 14px; margin-left: 5px; vertical-align: -2px; }
 svg { width: 22px; height: 22px; flex: 0 0 auto; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
@@ -73,7 +74,7 @@ textarea::placeholder, input::placeholder { color: var(--muted); opacity: 1; }
 .form-actions > :first-child { flex: 1; }
 .notice { border-radius: var(--radius-card); font-size: .875rem; padding: 12px; margin: 16px 0; border: 1px solid var(--rule); background: var(--soft); overflow-wrap: anywhere; }
 .notice svg { display: inline; width: 18px; height: 18px; vertical-align: -4px; margin-right: 6px; }
-.notice.error { border-color: var(--false-ink); }
+.notice.error { border-color: var(--ink); color: var(--ink); }
 .muted { color: var(--muted); font-size: .875rem; }
 .step-line { display: grid; grid-template-columns: repeat(3, 1fr); padding: 24px 0; margin: 24px 0 0; border-top: 1px solid var(--ink); list-style: none; gap: 0; }
 .step-line li { position: relative; font-size: .75rem; }
@@ -84,9 +85,12 @@ textarea::placeholder, input::placeholder { color: var(--muted); opacity: 1; }
 .waiting .disc { background: transparent; color: var(--muted); }
 .done .disc { background: var(--ink); color: var(--ground); border-color: var(--ink); }
 .active .disc { background: var(--action); color: var(--action-foreground); border-color: var(--action); }
-.failed .disc { border-color: var(--false-ink); color: var(--false-ink); }
+.failed .disc { background: transparent; border: 2px solid var(--ink); color: var(--ink); }
 .suggested .disc { border: 2px dashed var(--ink); }
 .work-log { background: var(--ink); color: var(--ground); padding: 14px 16px; border-radius: var(--radius-card); margin-bottom: 20px; font-size: .875rem; }
+/* The work log is an inverted surface: its ring and selection use the ground colour. */
+.work-log :focus-visible { outline-color: var(--ground); }
+.work-log ::selection { background: var(--ground); color: var(--ink); }
 summary { cursor: pointer; font-weight: 650; min-height: 28px; }
 .work-log p { display: grid; grid-template-columns: auto 1fr; gap: 12px; margin: 10px 0 0; }
 .work-log time { font-variant-numeric: tabular-nums; }
@@ -142,6 +146,8 @@ footer { text-align: center; border-top: 1px solid var(--rule); padding: 18px; f
     --action: #f3f2ee; --action-foreground: #0a0a0b; --action-hover: #e2e1da;
     --true-soft: #0f2219; --true-ink: #3ddc84; --false-soft: #2a1311; --false-ink: #ff6a5f;
     --misleading-soft: #29200c; --misleading-ink: #ffb224; --unknown-soft: #101a2b; --unknown-ink: #6aa8ff; }
+  .work-log :focus-visible { outline-color: var(--ink); }
+  .work-log ::selection { background: var(--action); color: var(--action-foreground); }
   .work-log { background: var(--soft); color: var(--ink); border: 1px solid var(--rule); }
 }
 @media (max-width: 330px) { main { padding-inline: 14px; } .masthead { padding-inline: 14px; } h1 { font-size: 2.1rem; } .identity-top { align-items: start; } }

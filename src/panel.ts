@@ -6,7 +6,7 @@ import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./l
 import { config } from "./lib/config.ts";
 import { button, el, icon, ripple } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
-import { checkBody, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, middleTruncate, validCapture } from "./lib/safety.ts";
+import { checkBody, frenchDate, hostname, httpUrl, isUrlLabel, IMAGE_TYPES, imageFileProblem, MAX_TEXT, middleTruncate, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
 import type { ImageResult, LinkResult, Me, Preparation, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
 
@@ -40,7 +40,9 @@ const clock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-dig
 function link(url: string, text: string, className = ""): HTMLElement {
   const safe = httpUrl(url);
   if (!safe) return el("span", {}, text);
-  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: className, title: safe }, middleTruncate(text), icon("external"));
+  const asUrl = isUrlLabel(text);
+  const clamp = !asUrl && !className.split(" ").some((c) => c === "button" || c === "quiet-link");
+  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: [className, clamp ? "clamp" : ""].filter(Boolean).join(" "), title: asUrl ? safe : text }, asUrl ? middleTruncate(text) : text, icon("external"));
   if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
   return anchor;
 }
@@ -306,7 +308,7 @@ function renderTextResult(result: LinkResult): HTMLElement {
   } else node.append(el("div", { class: "no-conclusion" }, el("h2", {}, icon("help"), t.noConclusion), el("p", {}, t.noConclusionHelp)));
   node.append(el("p", { class: "notice" }, t.disclaimer));
   if (result.days_old && result.days_old > 30) node.append(el("p", { class: "notice" }, icon("alert"), t.old));
-  if (result.published_at) node.append(el("p", { class: "muted" }, `${t.date} : ${result.published_at}`));
+  if (result.published_at) node.append(el("p", { class: "muted" }, `${t.date} : ${frenchDate(result.published_at)}`));
   if (result.summary) node.append(el("p", { class: "summary" }, result.summary));
   if (result.claims?.length) {
     const select = el("select", { id: "claim-to-save", disabled: state.saving || !!state.saved });
@@ -372,7 +374,7 @@ function renderPublicResult(result: PublicResult): HTMLElement {
   if (result.needs_text) node.append(el("p", { class: "notice" }, t.needsText));
   if (result.kind === "image") node.append(el("p", { class: "notice" }, t.publicImageLink));
   if (result.days_old && result.days_old > 30) node.append(el("p", { class: "notice" }, icon("alert"), t.old));
-  if (result.published_at) node.append(el("p", { class: "muted" }, `${t.date} : ${result.published_at}`));
+  if (result.published_at) node.append(el("p", { class: "muted" }, `${t.date} : ${frenchDate(result.published_at)}`));
   if (result.published.length) {
     node.append(el("h2", {}, t.publicMatches), el("p", { class: "notice" }, t.publicMatchHelp));
     const icons: Record<Verdict, Icon> = { true: "check", false: "cross", misleading: "alert", unverifiable: "help" };
@@ -382,9 +384,8 @@ function renderPublicResult(result: PublicResult): HTMLElement {
       node.append(el("article", { class: `verdict published-verdict ${verdict}` },
         el("h3", {}, entry.title),
         el("p", { class: "published-word" }, icon(icons[verdict]), t.verdicts[verdict]),
-        el("p", { class: "suggestion" }, t.publicPublished),
         entry.reason && el("p", {}, entry.reason),
-        el("p", { class: "suggestion" }, t.signedBy(entry.newsroom.name, entry.published_at.slice(0, 10))),
+        el("p", { class: "suggestion" }, t.signedBy(entry.newsroom.name, frenchDate(entry.published_at))),
         link(`${config.webUrl}/verifies/${encodeURIComponent(entry.id)}`, t.readPublished),
       ));
     }
