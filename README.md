@@ -127,6 +127,16 @@ search tasks, and source reading 10 seconds with at most two concurrent download
 queries plus fact-check and Wikipedia searches are attempted. Failed/challenged search pages
 are not cached as empty results. A successful search can still fail to cover a subject completely.
 
+Web and fact-check searches go through the server, never from the browser. The production API
+uses [Tavily](https://tavily.com) (`WEB_SEARCH_PROVIDER=tavily`), because DuckDuckGo's pages do not
+answer requests from the hosting provider's addresses. Tavily therefore receives the search
+queries prepared from your passage: names, dates and key words, not the whole selection. It does
+not receive your address, your page or your account. The key stays on the server and users need
+no Tavily account. Its free plan allows 1,000 searches a month, and a check usually costs two
+(web and fact-checkers). Repeated searches are served from a 10-minute cache. When the quota runs
+out, searches show as unavailable and no paid overage is used. Wikipedia is queried directly.
+A local API without a key keeps searching DuckDuckGo.
+
 Limitations: protected pages/images, `blob:`/`data:` images, screenshots, OCR, Firefox and Safari
 are not supported by this version. The panel can verify a manually entered image caption, but
 does not claim to understand an image's scene from pixels.
