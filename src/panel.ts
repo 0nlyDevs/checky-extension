@@ -221,7 +221,11 @@ function render(): void {
   ));
   const actions = el("div", { class: "form-actions" });
   if (state.running) actions.append(button(t.cancel, () => { stop(t.canceled); render(); }, { class: "ink" }));
-  else actions.append(el("button", { type: "submit", class: state.complete && !state.saved && !state.result?.tracked ? "" : "action", disabled: (state.audience === "newsroom" && !state.ws) || state.connecting || state.saving }, state.mode === "image" ? t.inspect : t.analyze));
+  else {
+    const submit = el("button", { type: "submit", class: state.complete && !state.saved && !state.result?.tracked ? "" : "action", disabled: (state.audience === "newsroom" && !state.ws) || state.connecting || state.saving }, state.mode === "image" ? t.inspect : t.analyze);
+    submit.addEventListener("pointerdown", ripple);
+    actions.append(submit);
+  }
   actions.append(button(t.clear, () => {
     stop(); resetResults(); state.text = ""; state.url = ""; state.caption = ""; state.pageUrl = ""; state.truncated = false; setFile(null);
     void chrome.storage.session.remove(captureKey); render();

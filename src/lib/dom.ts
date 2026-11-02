@@ -38,9 +38,9 @@ export function ripple(event: PointerEvent): void {
   const target = event.currentTarget;
   if (!(target instanceof HTMLElement) || target.matches(":disabled") || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const box = target.getBoundingClientRect();
-  const size = Math.max(box.width, box.height) * 2;
+  const size = Math.hypot(box.width, box.height) * 2;
   const wave = el("span", { class: "ripple", "aria-hidden": "true" });
   wave.style.cssText = `width:${size}px;height:${size}px;left:${event.clientX - box.left - size / 2}px;top:${event.clientY - box.top - size / 2}px`;
   target.append(wave);
-  wave.animate([{ transform: "scale(0)", opacity: 0.25 }, { transform: "scale(1)", opacity: 0 }], { duration: 450, easing: "ease-out" }).finished.then(() => wave.remove(), () => wave.remove());
+  wave.animate([{ transform: "scale(0)", opacity: 0.24 }, { transform: "scale(1)", opacity: 0 }], { duration: 650, easing: "cubic-bezier(.22,1,.36,1)" }).finished.then(() => wave.remove(), () => wave.remove());
 }
