@@ -6,7 +6,7 @@ import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./l
 import { config } from "./lib/config.ts";
 import { button, el, icon, ripple } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
-import { checkBody, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, validCapture } from "./lib/safety.ts";
+import { checkBody, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, middleTruncate, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
 import type { ImageResult, LinkResult, Me, Preparation, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
 
@@ -40,7 +40,7 @@ const clock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-dig
 function link(url: string, text: string, className = ""): HTMLElement {
   const safe = httpUrl(url);
   if (!safe) return el("span", {}, text);
-  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: className }, text, icon("external"));
+  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: className, title: safe }, middleTruncate(text), icon("external"));
   if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
   return anchor;
 }
@@ -368,7 +368,7 @@ function renderPublicResult(result: PublicResult): HTMLElement {
         el("p", { class: "published-word" }, icon(icons[verdict]), t.verdicts[verdict]),
         el("p", { class: "suggestion" }, t.publicPublished),
         entry.reason && el("p", {}, entry.reason),
-        el("p", { class: "suggestion" }, `${entry.newsroom.name} · ${t.publicPublishedOn} ${entry.published_at.slice(0, 10)}`),
+        el("p", { class: "suggestion" }, t.signedBy(entry.newsroom.name, entry.published_at.slice(0, 10))),
         link(`${config.webUrl}/verifies/${encodeURIComponent(entry.id)}`, t.readPublished),
       ));
     }

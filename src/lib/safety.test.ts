@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CAPTURE_TTL, captureFromMenu, checkBody, httpUrl, imageFileProblem, MAX_IMAGE_BYTES, MAX_TEXT, validCapture } from "./safety.ts";
+import { CAPTURE_TTL, captureFromMenu, checkBody, httpUrl, imageFileProblem, MAX_IMAGE_BYTES, MAX_TEXT, middleTruncate, validCapture } from "./safety.ts";
 
 test("reject unsafe links, credentials and browser internal schemes", () => {
   for (const url of ["javascript:alert(1)", "data:image/png,a", "file:///etc/passwd", "chrome://settings", "blob:https://site/a", "https://user:secret@example.com/a", "https://" + "a".repeat(2100)]) assert.equal(httpUrl(url), null);
@@ -36,4 +36,12 @@ test("image files are checked against the API's limits before anything is sent",
   assert.equal(imageFileProblem({ type: "image/jpeg", size: MAX_IMAGE_BYTES + 1 }), "size");
   assert.equal(imageFileProblem({ type: "image/webp", size: 0 }), "empty");
   for (const type of ["image/svg+xml", "image/heic", "application/pdf", ""]) assert.equal(imageFileProblem({ type, size: 10 }), "type");
+});
+
+test("long URLs are elided in the middle, short ones are kept", () => {
+  const url = "https://news.example/" + "a".repeat(200) + "/article-final";
+  const short = middleTruncate(url);
+  assert.equal(short.length, 48);
+  assert.ok(short.startsWith("https://news.example/") && short.endsWith("article-final") && short.includes("…"));
+  assert.equal(middleTruncate("https://a.example/x"), "https://a.example/x");
 });

@@ -14,14 +14,17 @@ body { font-family: inherit; margin: 0; min-width: 280px; background: var(--grou
 button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button, .button { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--edge); border-radius: var(--radius-control); background: var(--paper); color: var(--ink); font-weight: 650; cursor: pointer; text-decoration: none; }
-button:hover, .button:hover { background: var(--soft); }
+button:hover:not(:disabled), .button:hover { background: var(--soft); }
 button:disabled { background: var(--soft); color: var(--muted); border-color: var(--rule); cursor: not-allowed; }
 button.action { background: var(--action); border-color: var(--action); color: var(--action-foreground); min-height: 48px; }
 button.action:hover:not(:disabled) { background: var(--action-hover); border-color: var(--action-hover); color: var(--action-foreground); }
 .ink, button.ink { background: var(--ink); color: var(--ground); border-color: var(--ink); }
-.ink:hover { background: var(--muted); color: var(--ground); }
+.ink:hover:not(:disabled), a.ink:hover { background: var(--action-hover); border-color: var(--action-hover); color: var(--ground); }
+button.action:disabled, button.ink:disabled { background: var(--soft); border-color: var(--rule); color: var(--muted); cursor: not-allowed; }
 .ripple { position: absolute; border-radius: 50%; background: currentColor; pointer-events: none; opacity: 0; }
 .quiet { background: transparent; border-color: transparent; font-size: .875rem; padding-inline: 4px; text-decoration: underline; text-underline-offset: 3px; }
+button.quiet:hover:not(:disabled), a.quiet:hover { background: transparent; color: var(--ink); }
+button.quiet:disabled { background: transparent; border-color: transparent; }
 a { color: inherit; text-underline-offset: 3px; overflow-wrap: anywhere; }
 a svg { width: 14px; height: 14px; margin-left: 5px; vertical-align: -2px; }
 svg { width: 22px; height: 22px; flex: 0 0 auto; }
@@ -90,14 +93,14 @@ summary { cursor: pointer; font-weight: 650; min-height: 28px; }
 .running { font-weight: 650; }
 .text-result, .image-result { margin-top: 24px; }
 .verdict { padding: 18px; border: 2px dashed currentColor; border-radius: var(--radius-card); }
-.verdict h2, .published-word { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 12px; border: 2px dashed currentColor; border-radius: var(--radius-control); background: var(--paper); font-size: 1.375rem; font-weight: 800; letter-spacing: -.02em; }
+.verdict h2, .published-word { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 12px; border-radius: var(--radius-control); font-size: 1.375rem; font-weight: 800; letter-spacing: -.02em; }
 .verdict h2 svg, .published-word svg { width: 26px; height: 26px; }
 .verdict p:last-child { margin-bottom: 0; }
 .verdict.true { background: var(--true-soft); color: var(--true-ink); }
 .verdict.false { background: var(--false-soft); color: var(--false-ink); }
 .verdict.misleading { background: var(--misleading-soft); color: var(--misleading-ink); }
 .verdict.unverifiable { background: var(--unknown-soft); color: var(--unknown-ink); }
-.published-verdict, .published-verdict h2, .published-verdict .published-word { border-style: solid; }
+.published-verdict { border-style: solid; }
 .published-verdict { margin: 16px 0; }
 .published-verdict h3 { margin-top: 0; font-size: 1.125rem; }
 .published-word { font-size: 1.125rem; }
