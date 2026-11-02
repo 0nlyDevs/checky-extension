@@ -14,6 +14,13 @@ export type Capture = {
   truncated: boolean;
 };
 
+/** Keeps both ends of a long string (a URL's host and tail) and elides the middle. */
+export function middleTruncate(text: string, max = 48): string {
+  if (text.length <= max) return text;
+  const head = Math.ceil((max - 1) * 0.6), tail = max - 1 - head;
+  return `${text.slice(0, head)}…${text.slice(text.length - tail)}`;
+}
+
 /** Never launch browser-internal URLs, data URLs or credentials from page/model content. */
 export function httpUrl(raw: string): string | null {
   if (raw.length > 2000) return null;
