@@ -57,9 +57,13 @@ PUBLIC_RESULT = {
     }],
     "results": [
         {"n": 1, "kind": "fact-check", "title": "Une source vérifiable", "url": SOURCE,
-         "snippet": "<img src=x onerror=alert(1)> reste du texte, pas du HTML.", "date": None},
+         "snippet": "<img src=x onerror=alert(1)> reste du texte, pas du HTML.", "date": None,
+         "read_status": "read", "passages": ["Un passage effectivement lu dans la source."], "wording_overlap": True, "similar_to": [], "older_than_claim": False},
         {"n": 2, "kind": "web", "title": "Lien dangereux", "url": "javascript:alert(1)", "snippet": "Jamais ouvert.", "date": None},
     ],
+    "preparation": {"method": "ai", "summary": "Madagascar quitte l’OMS", "claims": ["Madagascar quitte l’OMS"], "entities": ["Madagascar", "OMS"], "queries": ["Madagascar OMS"], "warning": None, "cached": False},
+    "search_status": "ok",
+    "searches": [{"kind": "web", "query": "Madagascar OMS", "status": "ok", "count": 2, "duration_ms": 25}],
 }
 
 
@@ -100,7 +104,7 @@ class Fixture(BaseHTTPRequestHandler):
         else:
             assert self.headers.get("Authorization") == f"Bearer {TOKEN}"
         assert not self.headers.get("Cookie"), "Website cookies must not go to the API"
-        if self.path == "/api/v1/public/check":
+        if self.path in ("/api/v1/public/check", "/api/v1/public/check/stream"):
             if data.get("text") == "LIMIT":
                 return self.send({}, 429)
             if data.get("text") == "NOTREADY":
@@ -108,6 +112,23 @@ class Fixture(BaseHTTPRequestHandler):
             result = {**PUBLIC_RESULT}
             if data.get("text") == "NEW":
                 result["published"] = []
+            if data.get("text") == "BLOCKED":
+                result.update(published=[], results=[], preparation={"method": "fallback", "summary": "BLOCKED", "claims": [], "entities": [], "queries": ["BLOCKED"], "warning": "disabled", "cached": False}, search_status="unavailable", searches=[{"kind": "web", "query": "BLOCKED", "status": "blocked", "count": 0, "duration_ms": 10}])
+            if self.path.endswith("/stream"):
+                events = [
+                    ("step", {"key": "read", "status": "running"}),
+                    ("step", {"key": "read", "status": "done"}),
+                    ("step", {"key": "claims", "status": "running"}),
+                    ("preparation", result["preparation"]),
+                    ("step", {"key": "claims", "status": "done"}),
+                    ("step", {"key": "search", "status": "running"}),
+                    ("step", {"key": "search", "status": "failed" if result["search_status"] == "unavailable" else "done", "count": len(result["results"]), "search_status": result["search_status"]}),
+                ]
+                if result["results"]:
+                    events += [("step", {"key": "verdict", "status": "running"}), ("step", {"key": "verdict", "status": "done", "count": 1})]
+                events += [("result", result), ("done", {})]
+                raw = "".join(f"event: {name}\r\ndata: {json.dumps(value, ensure_ascii=False)}\r\n\r\n" for name, value in events).encode()
+                return self.send(raw, content_type="text/event-stream")
             return self.send(result)
         if self.path.endswith("/link-check"):
             if data.get("text") == "AUTH":
@@ -195,11 +216,15 @@ def main():
                 assert not [r for r in browser_requests if r[0] == "POST"], "Capture must not start analysis automatically"
                 panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
                 expect(panel.get_by_role("heading", name="Vérifications publiées sur des sujets proches", exact=True)).to_be_visible()
-                payload = next(r[2] for r in REQUESTS if r[1] == "/api/v1/public/check")
+                payload = next(r[2] for r in REQUESTS if r[1] == "/api/v1/public/check/stream")
                 assert payload == {"text": "Madagascar quitte l’OMS"}
                 expect(panel.locator("#outcome")).to_contain_text("<img src=x onerror=alert(1)>")
                 assert panel.locator("#outcome img").count() == 0
                 assert panel.locator('a[href^="javascript:"]').count() == 0
+                expect(panel.get_by_role("heading", name="Recherches préparées", exact=True)).to_be_visible()
+                expect(panel.locator(".prepared-queries")).to_contain_text("Madagascar OMS")
+                expect(panel.locator(".read-passage")).to_contain_text("Un passage effectivement lu")
+                expect(panel.get_by_text("Texte très proche de la publication sélectionnée : une reprise est possible. Cela ne suffit pas à établir une confirmation indépendante.", exact=True)).to_be_visible()
                 assert "solid" in panel.locator(".published-verdict").evaluate("node => getComputedStyle(node).borderTopStyle")
                 assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public verification must not call authentication"
                 assert panel.locator("button.action").count() == 1
@@ -220,6 +245,13 @@ def main():
                 assert not panel.locator("#outcome").inner_text().count("%")
                 assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public image examination must not call authentication"
                 panel.screenshot(path=str(OUT / "panel-image.png"), full_page=True)
+
+                capture(panel, "BLOCKED")
+                panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
+                expect(panel.locator(".search-status")).to_contain_text("Recherche indisponible")
+                assert "0 sources retrouvées" not in panel.locator(".work-log").text_content()
+                expect(panel.get_by_text("Aucune source retrouvée pour cette analyse.", exact=True)).to_have_count(0)
+                panel.screenshot(path=str(OUT / "panel-search-blocked.png"), full_page=True)
 
                 capture(panel, "NEW")
                 panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()

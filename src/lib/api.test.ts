@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
-import { api, ApiError, forgetToken, publicApi } from "./api.ts";
+import { api, ApiError, forgetToken, publicApi, publicStream } from "./api.ts";
 
 const originalFetch = globalThis.fetch;
 const session: Record<string, unknown> = {};
@@ -78,4 +78,17 @@ test("anonymous errors never trigger an authenticated fallback or clear a privat
   await assert.rejects(publicApi("/public/check", { text: "Une affirmation" }), (error: unknown) => error instanceof ApiError && error.status === 401);
   assert.equal(calls.length, 1);
   assert.ok(session["fanilo-auth"]);
+});
+
+test("public streams preserve stage events without consulting authentication", async () => {
+  globalThis.chrome = undefined as unknown as typeof chrome;
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return new Response('event: preparation\ndata: {"queries":["MAZAVALOHA PARC 2026"]}\n\nevent: done\ndata: {}\n\n', { headers: { "Content-Type": "text/event-stream" } });
+  };
+  const received: string[] = [];
+  await publicStream("/public/check/stream", { text: "MAZAVALOHA PARC 2026" }, (event) => { received.push(event.event); }, new AbortController().signal);
+  assert.deepEqual(received, ["preparation", "done"]);
+  assert.equal(calls.length, 1);
+  assert.equal((calls[0]?.init.headers as Record<string, string>).Authorization, undefined);
 });

@@ -75,6 +75,10 @@ export async function stream(path: string, body: unknown, onEvent: (event: Strea
 
 /** Public checks must never obtain a session token, send credentials or retry privately. */
 export async function publicApi<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return (await publicRequest(path, body, signal)).json() as Promise<T>;
+}
+
+async function publicRequest(path: string, body: unknown, signal?: AbortSignal): Promise<Response> {
   if (!path.startsWith("/public/")) throw new Error("invalid_public_path");
   let response: Response;
   try {
@@ -88,5 +92,9 @@ export async function publicApi<T>(path: string, body: unknown, signal?: AbortSi
     throw new ApiError(0, "network");
   }
   if (!response.ok) throw new ApiError(response.status);
-  return response.json() as Promise<T>;
+  return response;
+}
+
+export async function publicStream(path: string, body: unknown, onEvent: (event: StreamEvent) => void, signal: AbortSignal): Promise<void> {
+  await consumeSSE(await publicRequest(path, body, signal), onEvent, signal);
 }

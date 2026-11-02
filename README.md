@@ -14,6 +14,15 @@ and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface co
 - Use public text/link checks and image examination immediately, without signing in or fetching a token.
 - Read related published verdicts with their claim, newsroom and date. A related claim is not an
   automatic verdict on your passage. For a new topic, examine the external sources; no verdict is invented.
+- FANILO first removes promotional tails, uses a short AI preparation to extract literal claims,
+  names and dates from the whole passage, and searches up to three grounded queries. Distinctive
+  names near the end are not lost to a 200-character prefix. Invalid or unavailable AI preparation
+  falls back explicitly to whole-text keyword extraction, not a fabricated summary.
+- Real stages stream as they happen. Search failure, partial coverage and successful empty results
+  are different states. The panel shows the queries and search-service status.
+- Up to three source pages are opened with bounded timeouts. Literal passages are labelled as
+  read; search snippets are not passed off as article quotations. Very similar wording is flagged
+  as a possible reprise, not independent corroboration. Dates are taken from source metadata.
 - Watch the numbered line: **01 L’affirmation → 02 Les éléments → 03 La conclusion**.
 - Optional newsroom mode: sign in on FANILO, choose a newsroom and get checked quotations,
   warning signs and AI conclusions displayed as dashed suggestions.
@@ -48,8 +57,8 @@ and choose your newsroom. The public result stays visible; nothing is saved unti
 **Ma rédaction** opens the optional authenticated analysis mode. **Continuer sans compte** returns
 to public checks. Public mode does not probe your website session even if you are already signed in.
 
-The build is configured for the production web and API URLs. The API needs `/public/check` and
-`/public/image-check` from `fanilo-base`. Private newsroom mode uses the authenticated `link-check`
+The build is configured for the production web and API URLs. The API needs `/public/check/stream`
+and `/public/image-check` from `fanilo-base`; `/public/check` remains available as JSON. Private newsroom mode uses the authenticated `link-check`
 and `image-check` endpoints. If the server is not updated, public checks show an availability error;
 they never silently send the content through another audience's endpoint.
 This repository does not publish to a browser store. Edge and Brave need manual validation;
@@ -96,9 +105,14 @@ and live only in session storage. No selected content, history or credentials ar
 The panel previews the content and waits for **Vérifier ce contenu** or **Examiner l’image** before
 sending it. A selected passage is sent as text only; FANILO does not silently analyze the rest of
 its page. The page's URL is retained as provenance and is attached only when saving a dossier.
-Public text checks send a bounded search query to search services and compare it with published
-verdicts; they do not call an LLM or read private dossiers. Private newsroom checks may use AI
-providers. The image endpoint downloads public images; it forwards bytes to a pixel detector only
+Public text checks use one bounded AI call to prepare queries, then send those queries to search
+services and compare with published verdicts; they never generate a new truth verdict or read
+private dossiers. AI-generated names, dates and query words not grounded in the submitted text
+are discarded. Preparation uses configured Groq/Gemini/NVIDIA providers only, never paid Claude
+fallback. Validated plans are reused in bounded process memory for 10 minutes; persistent gateway
+response caching is disabled for this preparation. AI call metadata, not the prompt, is logged.
+Disable preparation with `PUBLIC_PREPARATION_ENABLED=false`. Private newsroom checks may use AI
+providers for their existing analysis. The image endpoint downloads public images; it forwards bytes to a pixel detector only
 when the operator explicitly enables a validated service. Anonymous detector access has an
 additional, separate opt-in. Do not submit confidential material. Reverse-image services receive
 the image URL only after you click their link.
@@ -108,6 +122,10 @@ The public text/image endpoints share per-process limits: 12 requests per addres
 are limited to 5 MB and 20 MP. An image with a caption uses two requests. These in-memory budgets
 are not distributed; multi-worker deployments need a shared edge limiter. Limits are configurable
 server-side with `PUBLIC_CHECKS_PER_WINDOW`, `PUBLIC_CHECKS_PER_DAY` and `PUBLIC_CHECKS_CONCURRENCY`.
+Preparation has a 10-second budget, external searches 24 seconds with at most two concurrent
+search tasks, and source reading 10 seconds with at most two concurrent downloads. Up to three
+queries plus fact-check and Wikipedia searches are attempted. Failed/challenged search pages
+are not cached as empty results. A successful search can still fail to cover a subject completely.
 
 Limitations: protected pages/images, `blob:`/`data:` images, screenshots, OCR, Firefox and Safari
 are not supported by this version. The panel can verify a manually entered image caption, but

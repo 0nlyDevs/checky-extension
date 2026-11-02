@@ -2,13 +2,13 @@ import "@fontsource-variable/archivo";
 import "@fontsource-variable/atkinson-hyperlegible-next";
 import "./style.css";
 import { t } from "./i18n/fr.ts";
-import { api, ApiError, forgetToken, publicApi, stream } from "./lib/api.ts";
+import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./lib/api.ts";
 import { config } from "./lib/config.ts";
 import { button, el, icon } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
 import { checkBody, hostname, httpUrl, MAX_TEXT, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
-import type { ImageResult, LinkResult, Me, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
+import type { ImageResult, LinkResult, Me, Preparation, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
 
 type Sent = { mode: Mode; text: string; caption: string; url: string; pageUrl: string; ws: string; audience: "public" | "newsroom" };
 type Saved = { id: string; ref: string | null; pending: string[] };
@@ -25,6 +25,7 @@ const state = {
   running: false, saving: false, complete: false, error: "", revision: 0,
   result: null as LinkResult | null, image: null as ImageResult | null, sent: null as Sent | null,
   publicResult: null as PublicResult | null,
+  preparation: null as Preparation | null,
   steps: freshSteps(), log: [] as { time: string; text: string }[], picked: new Set<string>(), claim: 0,
   includeOriginal: true, saved: null as Saved | null, uncertainSave: false,
 };
@@ -57,7 +58,7 @@ function errorText(error: unknown): string {
 
 function resetResults(): void {
   state.result = null; state.image = null; state.saved = null; state.sent = null;
-  state.publicResult = null; state.savePrompt = false;
+  state.publicResult = null; state.preparation = null; state.savePrompt = false;
   state.complete = false; state.error = ""; state.steps = freshSteps(); state.log = [];
   state.picked.clear(); state.claim = 0; state.uncertainSave = false;
   outcome.replaceChildren();
@@ -65,7 +66,7 @@ function resetResults(): void {
 
 function stop(message = ""): void {
   state.revision++; controller?.abort(); controller = null; state.running = false;
-  state.complete = false; state.result = null; state.publicResult = null; state.image = null; state.error = message;
+  state.complete = false; state.result = null; state.publicResult = null; state.preparation = null; state.image = null; state.error = message;
 }
 
 async function connect(): Promise<void> {
@@ -165,6 +166,7 @@ function render(): void {
   if (state.truncated) form.append(el("p", { class: "notice", role: "status" }, t.truncated));
   form.append(el("p", { class: "privacy" }, t.privacy), state.mode === "image" ? el("p", { class: "privacy" }, t.privacyImage) : el("span"));
   form.append(el("p", { class: "privacy" }, t.consent));
+  if (state.audience === "public") form.append(el("p", { class: "privacy" }, t.publicAiPrivacy));
   const actions = el("div", { class: "form-actions" });
   if (state.running) actions.append(button(t.cancel, () => { stop(t.canceled); render(); }, { class: "ink" }));
   else actions.append(el("button", { type: "submit", class: state.complete && !state.saved && !state.result?.tracked ? "" : "action", disabled: (state.audience === "newsroom" && !state.ws) || state.connecting || state.saving }, state.mode === "image" ? t.inspect : t.analyze));
@@ -182,9 +184,14 @@ function line(): HTMLElement {
   const phase = state.running ? state.steps.findLast((s) => s.status === "running")?.key : undefined;
   const active = phase === "search" ? 1 : phase === "verdict" ? 2 : 0;
   const node = el("ol", { class: "step-line", "aria-label": t.logTitle });
-  t.steps.forEach((label, i) => {
-    const status = state.complete ? (i === 2 && state.sent?.audience === "newsroom" ? "suggested" : "done") : state.running ? (i < active ? "done" : i === active ? "active" : "waiting") : "waiting";
-    node.append(el("li", { class: status, ...(status === "active" ? { "aria-current": "step" } : {}) }, el("span", { class: "disc" }, status === "done" ? icon("check") : String(i + 1).padStart(2, "0")), el("span", {}, label)));
+  const labels = state.sent?.audience === "public" && (state.sent.mode !== "image" || state.sent.caption.trim()) ? t.publicSteps : t.steps;
+  labels.forEach((label, i) => {
+    const failed = i === 1 && state.steps.find((s) => s.key === "search")?.status === "failed";
+    const reading = state.steps.find((s) => s.key === "verdict");
+    const unread = labels === t.publicSteps && state.complete && i === 2 && reading?.status !== "done";
+    const noPassages = labels === t.publicSteps && state.complete && i === 2 && reading?.status === "done" && reading.count === 0;
+    const status = unread ? "waiting" : failed || noPassages ? "failed" : state.complete ? (i === 2 && state.sent?.audience === "newsroom" ? "suggested" : "done") : state.running ? (i < active ? "done" : i === active ? "active" : "waiting") : "waiting";
+    node.append(el("li", { class: status, ...(status === "active" ? { "aria-current": "step" } : {}) }, el("span", { class: "disc" }, status === "done" ? icon("check") : status === "failed" ? icon("cross") : String(i + 1).padStart(2, "0")), el("span", {}, label)));
   });
   return node;
 }
@@ -196,6 +203,7 @@ function renderOutcome(): void {
   if (state.log.length) outcome.append(el("details", { class: "work-log", open: state.running }, el("summary", {}, t.logTitle), ...state.log.slice(-14).map((item) => el("p", {}, el("time", {}, item.time), el("span", {}, item.text)))));
   if (state.error) outcome.append(el("p", { class: "notice error", role: "alert" }, icon("alert"), state.error));
   if (state.running) outcome.append(el("p", { class: "running", role: "status" }, t.busy));
+  if (state.preparation) outcome.append(renderPreparation(state.preparation));
   if (state.image) outcome.append(renderImage(state.image));
   if (state.result) outcome.append(renderTextResult(state.result));
   if (state.publicResult) outcome.append(renderPublicResult(state.publicResult));
@@ -250,11 +258,11 @@ function renderTextResult(result: LinkResult): HTMLElement {
   return node;
 }
 
-function renderSources(result: Pick<LinkResult, "results" | "analysis">): HTMLElement {
+function renderSources(result: Pick<LinkResult, "results" | "analysis">, emptyMessage: string = t.noSources): HTMLElement {
   const node = el("div");
   const analysis = result.analysis;
   const found = result.results || [];
-  node.append(el("h2", { class: "section-title" }, t.sources), el("p", { class: "muted" }, found.length ? t.sourcesHelp : t.noSources));
+  node.append(el("h2", { class: "section-title" }, t.sources), el("p", { class: "muted" }, found.length ? t.sourcesHelp : emptyMessage));
   for (const source of found) {
     const sourceUrl = httpUrl(source.url);
     if (!sourceUrl) continue;
@@ -266,15 +274,39 @@ function renderSources(result: Pick<LinkResult, "results" | "analysis">): HTMLEl
       el("div", { class: "source-meta" }, el("span", {}, `[${source.n}] ${hostname(sourceUrl)}`), el("label", { class: "check-target" }, checkbox)),
       el("h3", {}, link(sourceUrl, source.title)),
       source.date && el("p", { class: "muted" }, source.date),
+      source.read_status && el("p", { class: "muted" }, t.searchSnippet),
       el("p", {}, source.snippet),
+      source.read_status && el("p", { class: "source-read-status" }, t.readStates[source.read_status as keyof typeof t.readStates] || t.readStates.not_read),
+      ...(source.passages || []).map((passage) => el("blockquote", { class: "read-passage" }, passage)),
+      source.wording_overlap && el("p", { class: "notice" }, t.wordingOverlap),
+      !!source.similar_to?.length && el("p", { class: "notice" }, `${t.similarSources} ${source.similar_to.map((n) => `[${n}]`).join(", ")}`),
+      source.older_than_claim && el("p", { class: "notice" }, t.olderSource),
       ...evidence.map((entry) => el("blockquote", {}, el("span", { class: "stance" }, t.stances[entry.stance] || t.stances.context), entry.quote)),
     ));
   }
   return node;
 }
 
+function renderPreparation(plan: Preparation): HTMLElement {
+  return el("section", { class: "preparation" },
+    el("details", { open: state.running }, el("summary", {}, t.preparation),
+      plan.summary && el("blockquote", {}, plan.summary),
+      el("ul", {}, ...(plan.claims || []).map((claim) => el("li", {}, claim))),
+    ),
+    plan.method === "fallback" && el("p", { class: "notice" }, plan.warning === "disabled" ? t.preparationDisabled : t.preparationFallback),
+    plan.cached && el("p", { class: "muted" }, t.preparationCached),
+    el("h2", {}, t.preparedQueries),
+    el("p", { class: "muted" }, t.manualSearchHelp),
+    el("ol", { class: "prepared-queries" }, ...(plan.queries || []).map((query) => el("li", {}, link(`https://www.google.com/search?q=${encodeURIComponent(query)}`, query)))),
+  );
+}
+
 function renderPublicResult(result: PublicResult): HTMLElement {
   const node = el("section", { class: "public-result" });
+  if (result.search_status && result.search_status !== "ok" && result.preparation) node.append(el("p", { class: "notice search-status", role: "status" }, t.searchStatus[result.search_status as keyof typeof t.searchStatus] || t.searchStatus.partial));
+  if (result.searches?.length) node.append(el("details", { class: "search-details" }, el("summary", {}, t.searchDetails),
+    ...result.searches.map((attempt) => el("p", {}, el("strong", {}, `${t.sourceKinds[attempt.kind]} · ${t.searchAttempt[attempt.status]}`), el("span", {}, attempt.query))),
+  ));
   if (result.needs_text) node.append(el("p", { class: "notice" }, t.needsText));
   if (result.kind === "image") node.append(el("p", { class: "notice" }, t.publicImageLink));
   if (result.days_old && result.days_old > 30) node.append(el("p", { class: "notice" }, icon("alert"), t.old));
@@ -295,7 +327,7 @@ function renderPublicResult(result: PublicResult): HTMLElement {
       ));
     }
   } else node.append(el("div", { class: "no-conclusion" }, el("h2", {}, icon("help"), t.publicEmpty), el("p", {}, t.publicEmptyHelp)));
-  node.append(renderSources({ results: result.results.map((source) => ({ ...source, date: source.date || undefined })) }));
+  node.append(renderSources({ results: result.results.map((source) => ({ ...source, date: source.date || undefined })) }, result.search_status === "unavailable" ? t.searchNoAccess : t.noSources));
   return node;
 }
 
@@ -356,11 +388,28 @@ async function run(): Promise<void> {
     }
     if (sent.mode !== "image" || sent.caption.trim()) {
       if (sent.audience === "public") {
-        state.steps[1]!.status = "running"; log(t.publicWorking); renderOutcome();
-        const result = await publicApi<PublicResult>("/public/check", body, signal);
+        let result: PublicResult | null = null;
+        await publicStream("/public/check/stream", body, (event) => {
+          if (revision !== state.revision) return;
+          if (event.event === "preparation") {
+            state.preparation = event.data as Preparation;
+            renderOutcome();
+          } else if (event.event === "step") {
+            const step = event.data as Step & { count?: number; search_status?: string };
+            const index = keys.indexOf(step.key);
+            if (index >= 0) state.steps[index] = step;
+            if (step.status === "running") log(t.publicLogs[step.key] || t.publicWorking);
+            else if (step.key === "search") {
+              const status = step.search_status;
+              log(status === "unavailable" ? t.searchStatus.unavailable : status === "partial" ? t.searchStatus.partial : t.publicSourcesFound(step.count || 0));
+            } else if (step.key === "verdict") log(t.sourcesRead(step.count || 0));
+            renderOutcome();
+          } else if (event.event === "result") result = event.data as PublicResult;
+          else if (event.event === "error") throw new ApiError(503, (event.data as { code?: string }).code || "failed");
+        }, signal);
+        if (!result) throw new Error("incomplete");
         if (revision !== state.revision) return;
         state.publicResult = result;
-        log(t.publicSourcesFound(result.results.length));
       } else {
         let result: LinkResult | null = null;
         await stream(`${workspacePath(sent.ws)}/link-check`, body, (event) => {

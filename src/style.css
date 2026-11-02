@@ -92,6 +92,15 @@ summary { cursor: pointer; font-weight: 650; min-height: 28px; }
 .published-verdict { border-style: solid; margin: 16px 0; }
 .published-verdict h3 { margin-top: 0; font-size: 1.125rem; }
 .published-word { display: flex; align-items: center; gap: 8px; font-weight: 750; font-size: 1.25rem; }
+.preparation { margin: 20px 0; padding-block: 16px; border-block: 1px solid var(--rule); }
+.preparation h2 { margin-top: 16px; }
+.preparation li { overflow-wrap: anywhere; }
+.prepared-queries { padding-left: 22px; margin-bottom: 0; }
+.prepared-queries li { margin: 8px 0; }
+.search-details { margin: 16px 0; font-size: .875rem; }
+.search-details p { padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.search-details span { display: block; overflow-wrap: anywhere; }
+.source-read-status { font-weight: 650; margin-top: 16px; }
 .suggestion { font-size: .875rem; }
 .no-conclusion { border: 2px dashed var(--edge); padding: 16px; }
 .no-conclusion h2 { font-size: 1.25rem; }

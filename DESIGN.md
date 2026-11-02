@@ -28,3 +28,9 @@ numbered line, meaningful evidence and explicit user confirmation carry the desi
 Public checks work immediately without a connection section. Optional connection is offered at
 the save action, preserving the result. Related published verdicts use solid borders and include
 the full claim, newsroom and date; novel public claims get sources, never a new AI truth label.
+
+The public evidence flow exposes a grounded preparation (claims are quoted, not endorsed), the
+actual search queries, service failures and passages genuinely read. Search snippets are labelled
+as snippets. An unavailable search gets an ink failure marker rather than a completed-reading
+check; zero-source messages never stand in for a blocked service. Possible reprises are neutral
+warnings, not another truth colour or a count of independent confirmations.
