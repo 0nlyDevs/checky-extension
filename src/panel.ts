@@ -4,7 +4,7 @@ import "./style.css";
 import { t } from "./i18n/fr.ts";
 import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./lib/api.ts";
 import { config } from "./lib/config.ts";
-import { button, el, icon } from "./lib/dom.ts";
+import { button, el, icon, ripple } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
 import { checkBody, hostname, httpUrl, MAX_TEXT, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
@@ -37,7 +37,10 @@ const clock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-dig
 
 function link(url: string, text: string, className = ""): HTMLElement {
   const safe = httpUrl(url);
-  return safe ? el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: className }, text, icon("external")) : el("span", {}, text);
+  if (!safe) return el("span", {}, text);
+  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: className }, text, icon("external"));
+  if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
+  return anchor;
 }
 const workspacePath = (ws = state.ws) => `/workspaces/${encodeURIComponent(ws)}`;
 const deskUrl = (ws = state.ws) => `${config.webUrl}/w/${encodeURIComponent(ws)}/affirmations`;
@@ -490,7 +493,7 @@ function applyCapture(capture: Capture): void {
 
 async function start(): Promise<void> {
   root.append(el("header", { class: "masthead" },
-    el("div", { class: "brand" }, el("img", { src: "icons/32.png", alt: "", width: "28", height: "28" }), el("span", {}, t.name)),
+    el("div", { class: "brand" }, el("span", { class: "wordmark" }, t.name, el("em", { "aria-hidden": "true" }, "."))),
     link(config.webUrl, t.open, "quiet-link"),
   ), el("main", {}, el("div", { class: "intro" }, el("h1", {}, t.title), el("p", {}, t.lead)), formArea, outcome), el("footer", {}, t.footer), announce);
   const window = await chrome.windows.getCurrent();
