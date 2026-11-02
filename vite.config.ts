@@ -21,19 +21,19 @@ export default defineConfig(({ mode }) => {
     plugins: [{
       name: "fanilo-manifest",
       generateBundle() {
-        for (const family of ["archivo", "atkinson-hyperlegible-next"]) {
-          this.emitFile({ type: "asset", fileName: `licenses/${family}-OFL.txt`, source: readFileSync(resolve(import.meta.dirname, `node_modules/@fontsource-variable/${family}/LICENSE`), "utf8") });
+        for (const [scope, family] of [["@fontsource-variable", "bricolage-grotesque"], ["@fontsource", "cormorant-garamond"]]) {
+          this.emitFile({ type: "asset", fileName: `licenses/${family}-OFL.txt`, source: readFileSync(resolve(import.meta.dirname, `node_modules/${scope}/${family}/LICENSE`), "utf8") });
         }
         this.emitFile({ type: "asset", fileName: "manifest.json", source: JSON.stringify({
           manifest_version: 3,
-          name: "FANILO — Vérifier ici",
+          name: "Checky — Vérifier ici",
           version: (JSON.parse(readFileSync(resolve(import.meta.dirname, "package.json"), "utf8")) as { version: string }).version,
           description: "Vérifiez un texte, un lien ou les indices de génération d’une image sans quitter la page.",
           minimum_chrome_version: "116",
           permissions: ["contextMenus", "sidePanel", "storage"],
           host_permissions: [...new Set([`${webUrl}/*`, `${apiUrl}/*`])],
           background: { service_worker: "background.js", type: "module" },
-          action: { default_title: "Ouvrir FANILO" },
+          action: { default_title: "Ouvrir Checky" },
           side_panel: { default_path: "sidepanel.html" },
           icons: { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
           content_security_policy: { extension_pages: "script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'" },

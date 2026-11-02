@@ -1,5 +1,5 @@
-import "@fontsource-variable/archivo";
-import "@fontsource-variable/atkinson-hyperlegible-next";
+import "@fontsource-variable/bricolage-grotesque/opsz.css";
+import "@fontsource/cormorant-garamond/500-italic.css";
 import "./style.css";
 import { t } from "./i18n/fr.ts";
 import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./lib/api.ts";
@@ -252,7 +252,7 @@ function renderTextResult(result: LinkResult): HTMLElement {
     select.addEventListener("change", () => { state.claim = Number(select.value); });
     node.append(el("label", { for: "claim-to-save" }, t.claimToSave), select);
   }
-  if (result.signals?.length) node.append(el("details", { class: "warning-signs" }, el("summary", {}, t.signals), ...result.signals.map((signal) => el("div", {}, el("blockquote", {}, signal.quote), el("p", {}, signal.why)))));
+  if (result.signals?.length) node.append(el("details", { class: "warning-signs" }, el("summary", {}, t.signals), ...result.signals.map((signal) => el("div", {}, el("blockquote", { class: "passage" }, signal.quote), el("p", {}, signal.why)))));
   node.append(renderSources(result));
   if (analysis?.missing) node.append(el("h3", {}, t.missing), el("p", {}, analysis.missing));
   return node;
@@ -277,11 +277,11 @@ function renderSources(result: Pick<LinkResult, "results" | "analysis">, emptyMe
       source.read_status && el("p", { class: "muted" }, t.searchSnippet),
       el("p", {}, source.snippet),
       source.read_status && el("p", { class: "source-read-status" }, t.readStates[source.read_status as keyof typeof t.readStates] || t.readStates.not_read),
-      ...(source.passages || []).map((passage) => el("blockquote", { class: "read-passage" }, passage)),
+      ...(source.passages || []).map((passage) => el("blockquote", { class: "passage read-passage" }, passage)),
       source.wording_overlap && el("p", { class: "notice" }, t.wordingOverlap),
       !!source.similar_to?.length && el("p", { class: "notice" }, `${t.similarSources} ${source.similar_to.map((n) => `[${n}]`).join(", ")}`),
       source.older_than_claim && el("p", { class: "notice" }, t.olderSource),
-      ...evidence.map((entry) => el("blockquote", {}, el("span", { class: "stance" }, t.stances[entry.stance] || t.stances.context), entry.quote)),
+      ...evidence.map((entry) => el("blockquote", { class: "passage" }, el("span", { class: "stance" }, t.stances[entry.stance] || t.stances.context), entry.quote)),
     ));
   }
   return node;
