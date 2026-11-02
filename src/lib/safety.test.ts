@@ -61,3 +61,18 @@ test("dates read in French, odd input is left as is", () => {
   assert.equal(frenchDate("2026-11-02T08:30:00Z").replace(/ | /g, " "), "2 nov. 2026");
   assert.equal(frenchDate("n/a"), "n/a");
 });
+
+test("each menu entry says what was asked, and keeps the tab to answer in", () => {
+  const communique = captureFromMenu({ menuItemId: "fanilo-communique", selectionText: "COMMUNIQUÉ N° 2026-118", frameId: 2 }, 7);
+  assert.equal(communique?.intent, "communique");
+  assert.equal(communique?.kind, "text");
+  assert.equal(communique?.tabId, 7);
+  assert.equal(communique?.frameId, 2);
+  assert.ok(communique && validCapture(communique));
+  assert.equal(captureFromMenu({ menuItemId: "fanilo-communique", srcUrl: "https://img.example/c.jpg" })?.kind, "image");
+  assert.equal(captureFromMenu({ menuItemId: "fanilo-page", linkUrl: "https://www.facebook.com/jirama" })?.intent, "page");
+  assert.equal(captureFromMenu({ menuItemId: "fanilo-reply", selectionText: "72 heures de délestage" })?.intent, "reply");
+  assert.equal(captureFromMenu({ menuItemId: "fanilo-text", selectionText: "texte" })?.tabId, undefined);
+  assert.equal(validCapture({ ...communique, intent: "publish" }), false);
+  assert.equal(validCapture({ ...communique, tabId: -1 }), false);
+});
