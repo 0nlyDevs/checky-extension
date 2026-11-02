@@ -4,7 +4,7 @@
 - Manifest V3, TypeScript and Vite. Never request access to all sites or add content scripts for passive monitoring.
 - Only send selected content after an explicit confirmation. Use `textContent`, never inject page or model HTML.
 - The website owns authentication. Use its existing cookie through a credentialed request to its token endpoint; never read cookies or ask for a password inside the extension.
-- Open in public mode, without token requests or a login gate. Anonymous checks use `/public/check` and `/public/image-check` with no credentials. Never silently fall back from private analysis to public processing.
+- Open in public mode, without token requests or a login gate. Anonymous checks use `/public/check`, `/public/image-check` and `/public/image-check/file` (an image file as the raw body) with no credentials. Never silently fall back from private analysis to public processing.
 - Public text results show published verdict candidates and external sources, not new AI verdicts. Connection is optional for newsroom analysis and saving; preserve a public result during optional connection.
 - Public AI only extracts literal claims/entities and grounded search queries. Stream preparation/search/reading stages; never report blocked services as an empty successful search or copied articles as independent confirmation.
 - JWTs and captures belong in `chrome.storage.session`, never local/sync storage. Do not expose external messaging or web-accessible resources.

@@ -24,6 +24,8 @@ ITEM = "00000000-0000-4000-8000-000000000002"
 REQUESTS = []
 COUNTS = {"create": 0, "attach": 0}
 SOURCE = "https://evidence.example/checked"
+# A real 1 × 1 PNG, so the panel's preview renders like a chosen photo.
+PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 
 
 def encode(value):
@@ -97,7 +99,9 @@ class Fixture(BaseHTTPRequestHandler):
             self.send({}, 404)
 
     def do_POST(self):
-        data = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        kind = self.headers.get("Content-Type", "")
+        data = {"type": kind, "bytes": raw} if kind.startswith("image/") else json.loads(raw)
         REQUESTS.append(("POST", self.path, data))
         if self.path.startswith("/api/v1/public/"):
             assert not self.headers.get("Authorization"), "Public checks must not send a token"
@@ -148,6 +152,14 @@ class Fixture(BaseHTTPRequestHandler):
                 events.append(("done", {"steps": 4}))
             raw = "".join(f"event: {name}\r\ndata: {json.dumps(value, ensure_ascii=False)}\r\n\r\n" for name, value in events).encode()
             return self.send(raw, content_type="text/event-stream")
+        if self.path.endswith("/image-check/file"):
+            return self.send({
+                "url": None, "source": "file", "assessment": "none",
+                "image": {"width": 1, "height": 1, "format": "PNG", "ai_markers": [], "content_credentials": False, "exif": {}},
+                "detector": {"status": "not_configured", "assessment": "inconclusive", "model": None},
+                "reverse_search": [{"name": "TinEye", "url": "https://tineye.com/"}],
+                "limitations": ["absence_of_markers_does_not_prove_authenticity"],
+            })
         if self.path.endswith("/image-check"):
             return self.send({
                 "url": data["url"], "assessment": "none",
@@ -247,6 +259,40 @@ def main():
                 assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public image examination must not call authentication"
                 panel.screenshot(path=str(OUT / "panel-image.png"), full_page=True)
 
+                # An image without a public link: chosen as a file, then pasted as a screenshot.
+                panel.get_by_role("button", name="Effacer", exact=True).click()
+                panel.locator("#image-file").set_input_files({"name": "photo-whatsapp.png", "mimeType": "image/png", "buffer": PNG})
+                expect(panel.get_by_role("group", name="Image choisie")).to_contain_text("photo-whatsapp.png")
+                assert not [r for r in REQUESTS if r[1].endswith("/image-check/file")], "Choosing a file must not send it"
+                panel.screenshot(path=str(OUT / "panel-image-file-chosen.png"), full_page=True)
+                panel.get_by_role("button", name="Examiner l’image", exact=True).click()
+                expect(panel.get_by_role("heading", name="Aucun indice détecté", exact=True)).to_be_visible()
+                sent = [r for r in REQUESTS if r[1] == "/api/v1/public/image-check/file"]
+                assert len(sent) == 1 and sent[0][2] == {"type": "image/png", "bytes": PNG}, sent
+                expect(panel.get_by_text("L’image a été envoyée comme fichier : ces services ne reçoivent rien de Checky. Ouvrez-en un et déposez-y l’image vous-même.", exact=True)).to_be_visible()
+                expect(panel.get_by_role("link", name="Ouvrir l’image d’origine")).to_have_count(0)
+                assert not [r for r in browser_requests if "/api/auth/" in r[1]], "Public file examination must not call authentication"
+                panel.screenshot(path=str(OUT / "panel-image-file.png"), full_page=True)
+                panel.get_by_role("button", name="Retirer", exact=True).click()
+                panel.locator("#image-file").set_input_files({"name": "lourde.png", "mimeType": "image/png", "buffer": b"\0" * (5 * 1024 * 1024 + 1)})
+                expect(panel.get_by_role("alert")).to_contain_text("dépasse 5 Mo")
+                panel.get_by_role("button", name="Texte", exact=True).click()
+                panel.evaluate("""(bytes) => {
+                  const data = new DataTransfer();
+                  data.items.add(new File([new Uint8Array(bytes)], "capture.png", { type: "image/png" }));
+                  document.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
+                }""", list(PNG))
+                expect(panel.get_by_role("button", name="Image", exact=True)).to_have_attribute("aria-pressed", "true")
+                expect(panel.get_by_role("group", name="Image choisie")).to_contain_text("capture.png")
+                assert len([r for r in REQUESTS if r[1].endswith("/image-check/file")]) == 1, "Only the confirmed file is sent"
+                for width in (320, 400):
+                    panel.set_viewport_size({"width": width, "height": 900})
+                    assert panel.evaluate("document.documentElement.scrollWidth <= innerWidth"), f"Overflow at {width}px"
+                panel.set_viewport_size({"width": 400, "height": 900})
+                panel.emulate_media(color_scheme="dark")
+                panel.screenshot(path=str(OUT / "panel-image-file-dark.png"), full_page=True)
+                panel.emulate_media(color_scheme="light")
+
                 capture(panel, "BLOCKED")
                 panel.get_by_role("button", name="Vérifier ce contenu", exact=True).click()
                 expect(panel.locator(".search-status")).to_contain_text("Recherche indisponible")
@@ -300,7 +346,7 @@ def main():
                 stores = panel.evaluate("""async () => ({session: await chrome.storage.session.get(null), local: await chrome.storage.local.get(null), sync: await chrome.storage.sync.get(null)})""")
                 assert not stores["local"] and not stores["sync"] and "fanilo-auth" not in stores["session"]
                 assert not errors, errors
-                print("PASS: anonymous text/images without token requests, published-vs-new claim distinction, optional login preserving public result, private SSE, safe DOM, source retry, image caveats, responsive light/dark, no silent public fallback, session-only storage")
+                print("PASS: anonymous text/images without token requests, published-vs-new claim distinction, optional login preserving public result, private SSE, safe DOM, source retry, image caveats, image files and pasted captures sent only on confirmation, responsive light/dark, no silent public fallback, session-only storage")
             finally:
                 context.close()
     finally:

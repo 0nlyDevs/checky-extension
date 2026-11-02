@@ -6,11 +6,11 @@ import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./l
 import { config } from "./lib/config.ts";
 import { button, el, icon, ripple } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
-import { checkBody, hostname, httpUrl, MAX_TEXT, validCapture } from "./lib/safety.ts";
+import { checkBody, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
 import type { ImageResult, LinkResult, Me, Preparation, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
 
-type Sent = { mode: Mode; text: string; caption: string; url: string; pageUrl: string; ws: string; audience: "public" | "newsroom" };
+type Sent = { mode: Mode; text: string; caption: string; url: string; file: File | null; pageUrl: string; ws: string; audience: "public" | "newsroom" };
 type Saved = { id: string; ref: string | null; pending: string[] };
 const root = document.querySelector<HTMLDivElement>("#app")!;
 const formArea = el("div");
@@ -22,6 +22,7 @@ const state = {
   me: null as Me | null, ws: "", connecting: false, authError: "",
   audience: "public" as "public" | "newsroom", savePrompt: false,
   mode: "text" as Mode, text: "", caption: "", url: "", pageUrl: "", truncated: false,
+  file: null as File | null, fileError: "",
   running: false, saving: false, complete: false, error: "", revision: 0,
   result: null as LinkResult | null, image: null as ImageResult | null, sent: null as Sent | null,
   publicResult: null as PublicResult | null,
@@ -33,6 +34,7 @@ let controller: AbortController | null = null;
 let captureKey = "";
 let captureId = "";
 let queuedCapture: Capture | null = null;
+let preview = "";
 const clock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 function link(url: string, text: string, className = ""): HTMLElement {
@@ -51,7 +53,9 @@ function errorText(error: unknown): string {
     if (error.status === 401) return t.errors.unauthorized;
     if ([403, 404].includes(error.status)) return state.audience === "public" && !state.saving ? t.errors.publicUnavailable : t.errors.forbidden;
     if (error.status === 429) return t.errors.rateLimit;
-    if (error.status === 422) return t.errors.invalid;
+    if (error.status === 422) return state.sent?.file ? t.errors.unreadableFile : t.errors.invalid;
+    if (error.status === 413) return t.errors.tooLarge;
+    if (error.status === 415) return t.errors.unsupportedImage;
     if (error.code === "ai_unavailable" || error.status === 503) return t.errors.unavailable;
     if (error.status === 0) return t.errors.network;
   }
@@ -70,6 +74,50 @@ function resetResults(): void {
 function stop(message = ""): void {
   state.revision++; controller?.abort(); controller = null; state.running = false;
   state.complete = false; state.result = null; state.publicResult = null; state.preparation = null; state.image = null; state.error = message;
+}
+
+/** Keep a chosen, dropped or pasted image in memory only; nothing is sent before the click. */
+function setFile(file: File | null): void {
+  if (preview) URL.revokeObjectURL(preview);
+  preview = ""; state.fileError = "";
+  const problem = file && imageFileProblem(file);
+  state.file = file && !problem ? file : null;
+  if (problem) state.fileError = t.fileErrors[problem];
+  if (state.file) preview = URL.createObjectURL(state.file);
+}
+
+function takeImage(file: File): void {
+  if (state.running || state.saving) return;
+  stop(); resetResults(); state.mode = "image"; state.truncated = false;
+  setFile(file); render();
+}
+
+function imageFields(form: HTMLFormElement, busy: boolean): void {
+  if (state.file) {
+    const thumbnail = el("img", { src: preview, alt: "" });
+    thumbnail.addEventListener("error", () => { thumbnail.style.visibility = "hidden"; });
+    form.append(el("p", { class: "field-title" }, t.imageFile), el("div", { class: "image-file", role: "group", "aria-label": t.chosenImage },
+      thumbnail,
+      el("p", {}, el("strong", {}, state.file.name || t.chosenImage), el("span", { class: "muted" }, t.fileSize(state.file.size))),
+      button(t.removeImage, () => { setFile(null); resetResults(); render(); }, { class: "quiet", disabled: busy }),
+    ));
+  } else {
+    const input = el("input", { id: "image-file", type: "file", accept: IMAGE_TYPES.join(","), hidden: true, disabled: busy });
+    input.addEventListener("change", () => { const file = input.files?.[0]; if (file) takeImage(file); });
+    form.append(el("p", { class: "field-title" }, t.imageFile), el("div", { class: "image-drop" },
+      button(t.chooseImage, () => { input.click(); }, { disabled: busy, "aria-describedby": "image-drop-help" }), input,
+      el("p", { id: "image-drop-help", class: "muted" }, t.imageDropHelp),
+    ));
+    if (state.fileError) form.append(el("p", { class: "notice error", role: "alert" }, icon("alert"), state.fileError));
+    const field = el("input", { id: "content-url", type: "url", maxlength: "2000", placeholder: t.urlPlaceholder, disabled: busy });
+    field.value = state.url;
+    field.addEventListener("input", () => { state.url = field.value; resetResults(); });
+    form.append(el("label", { for: "content-url" }, t.imageUrl), field);
+  }
+  const caption = el("textarea", { id: "caption", rows: "3", minlength: state.audience === "public" ? "3" : "1", maxlength: String(MAX_TEXT), placeholder: t.captionPlaceholder, disabled: busy });
+  caption.value = state.caption;
+  caption.addEventListener("input", () => { state.caption = caption.value; resetResults(); });
+  form.append(el("label", { for: "caption" }, t.caption), caption);
 }
 
 async function connect(): Promise<void> {
@@ -153,17 +201,12 @@ function render(): void {
     const count = el("span", { class: "count", "aria-hidden": "true" }, `${state.text.length} / ${MAX_TEXT}`);
     field.addEventListener("input", () => { state.text = field.value; state.truncated = false; count.textContent = `${state.text.length} / ${MAX_TEXT}`; resetResults(); });
     form.append(el("label", { for: "content" }, t.input), field, count);
-  } else {
+  } else if (state.mode === "image") imageFields(form, busy);
+  else {
     const field = el("input", { id: "content-url", type: "url", maxlength: "2000", placeholder: t.urlPlaceholder, required: true, disabled: busy });
     field.value = state.url;
     field.addEventListener("input", () => { state.url = field.value; resetResults(); });
-    form.append(el("label", { for: "content-url" }, state.mode === "image" ? t.imageUrl : t.url), field);
-    if (state.mode === "image") {
-      const caption = el("textarea", { id: "caption", rows: "3", minlength: state.audience === "public" ? "3" : "1", maxlength: String(MAX_TEXT), placeholder: t.captionPlaceholder, disabled: busy });
-      caption.value = state.caption;
-      caption.addEventListener("input", () => { state.caption = caption.value; resetResults(); });
-      form.append(el("label", { for: "caption" }, t.caption), caption);
-    }
+    form.append(el("label", { for: "content-url" }, t.url), field);
   }
   if (state.pageUrl) form.append(el("div", { class: "source-origin" }, el("span", {}, t.page), link(state.pageUrl, hostname(state.pageUrl))));
   if (state.truncated) form.append(el("p", { class: "notice", role: "status" }, t.truncated));
@@ -174,7 +217,7 @@ function render(): void {
   if (state.running) actions.append(button(t.cancel, () => { stop(t.canceled); render(); }, { class: "ink" }));
   else actions.append(el("button", { type: "submit", class: state.complete && !state.saved && !state.result?.tracked ? "" : "action", disabled: (state.audience === "newsroom" && !state.ws) || state.connecting || state.saving }, state.mode === "image" ? t.inspect : t.analyze));
   actions.append(button(t.clear, () => {
-    stop(); resetResults(); state.text = ""; state.url = ""; state.caption = ""; state.pageUrl = ""; state.truncated = false;
+    stop(); resetResults(); state.text = ""; state.url = ""; state.caption = ""; state.pageUrl = ""; state.truncated = false; setFile(null);
     void chrome.storage.session.remove(captureKey); render();
   }, { class: "quiet", disabled: busy }));
   form.append(actions);
@@ -227,9 +270,9 @@ function renderImage(result: ImageResult): HTMLElement {
     result.detector.status === "assessed" && el("p", {}, t.detectorSignals[result.detector.assessment || "inconclusive"]),
     result.detector.model && el("p", { class: "muted" }, result.detector.model),
     el("p", { class: "muted" }, t.imageContext),
-    el("h3", {}, t.reverse), el("p", { class: "muted" }, t.reverseHelp),
+    el("h3", {}, t.reverse), el("p", { class: "muted" }, result.source === "file" ? t.reverseFileHelp : t.reverseHelp),
     el("div", { class: "reverse-links" }, ...result.reverse_search.map((entry) => link(entry.url, entry.name))),
-    link(result.url, t.imageLink),
+    result.url && link(result.url, t.imageLink),
   );
   return resultNode;
 }
@@ -360,6 +403,7 @@ function renderSave(): HTMLElement {
     checkbox.addEventListener("change", () => { state.includeOriginal = checkbox.checked; });
     node.append(el("label", { class: "include-original" }, checkbox, t.includeSource));
   }
+  if (sent?.file) node.append(el("p", { class: "notice" }, t.fileNotAttached));
   node.append(button(state.saving ? t.tracking : t.track, () => { void save(); }, { class: "action", disabled: state.saving || state.uncertainSave }), el("p", { class: "privacy" }, t.saveHint));
   if (state.uncertainSave) node.append(link(deskUrl(sent?.ws), t.openDesk));
   return node;
@@ -369,11 +413,14 @@ function log(text: string): void { state.log.push({ time: clock.format(new Date(
 
 async function run(): Promise<void> {
   if (state.audience === "newsroom" && !state.ws) return;
-  let body: { text?: string; url?: string };
-  try { body = checkBody(state.mode, state.text, state.url); }
-  catch { state.error = t.invalidUrl; renderOutcome(); return; }
+  const file = state.mode === "image" ? state.file : null;
+  let body: { text?: string; url?: string } = {};
+  if (!file) {
+    try { body = checkBody(state.mode, state.text, state.url); }
+    catch { state.error = state.mode === "image" && !state.url.trim() ? t.imageMissing : t.invalidUrl; renderOutcome(); return; }
+  }
   resetResults();
-  const sent: Sent = { mode: state.mode, text: state.text, caption: state.caption, url: body.url || "", pageUrl: state.pageUrl, ws: state.ws, audience: state.audience };
+  const sent: Sent = { mode: state.mode, text: state.text, caption: state.caption, url: body.url || "", file, pageUrl: state.pageUrl, ws: state.ws, audience: state.audience };
   state.sent = sent; state.running = true;
   const revision = ++state.revision;
   controller = new AbortController();
@@ -382,9 +429,11 @@ async function run(): Promise<void> {
   try {
     if (sent.mode === "image") {
       state.steps[0]!.status = "running"; log(t.logs.read); renderOutcome();
+      // A file goes as its own bytes to the `/file` route; a link is fetched by the server.
+      const route = sent.file ? "image-check/file" : "image-check";
       const image = sent.audience === "public"
-        ? await publicApi<ImageResult>("/public/image-check", body, signal)
-        : await api<ImageResult>(`${workspacePath(sent.ws)}/image-check`, body, signal);
+        ? await publicApi<ImageResult>(`/public/${route}`, sent.file || body, signal)
+        : await api<ImageResult>(`${workspacePath(sent.ws)}/${route}`, sent.file || body, signal);
       if (revision !== state.revision) return;
       state.image = image; state.steps[0]!.status = "done";
       if (sent.caption.trim()) body = { text: sent.caption.trim() };
@@ -450,7 +499,7 @@ async function save(): Promise<void> {
   state.saving = true; state.error = ""; render();
   try {
     if (!state.saved) {
-      const title = state.result?.claims?.[state.claim] || sent.caption.trim() || state.result?.title || state.publicResult?.title || sent.text || sent.url;
+      const title = state.result?.claims?.[state.claim] || sent.caption.trim() || state.result?.title || state.publicResult?.title || sent.text || sent.url || (sent.file ? t.imageFileTitle(sent.file.name) : "");
       const body = [state.result?.summary, sent.text, sent.caption, sent.url, sent.pageUrl].filter(Boolean).join("\n\n").slice(0, 4000);
       const made = await api<{ item_id: string; ref: string | null }>(`${workspacePath(sent.ws)}/copilot/act`, { kind: "create_claim", title: title.slice(0, 300), body, origin: "other" });
       if (!made.item_id) throw new Error("incomplete");
@@ -487,7 +536,7 @@ function applyCapture(capture: Capture): void {
   captureId = capture.id; stop(); resetResults();
   void chrome.storage.session.remove(captureKey);
   state.mode = capture.kind; state.text = capture.text; state.url = capture.url;
-  state.caption = ""; state.pageUrl = capture.pageUrl; state.truncated = capture.truncated;
+  state.caption = ""; state.pageUrl = capture.pageUrl; state.truncated = capture.truncated; setFile(null);
   render(); document.querySelector<HTMLElement>(state.mode === "text" ? "#content" : "#content-url")?.focus();
 }
 
@@ -496,6 +545,25 @@ async function start(): Promise<void> {
     el("div", { class: "brand" }, el("span", { class: "wordmark" }, t.name, el("em", { "aria-hidden": "true" }, "."))),
     link(config.webUrl, t.open, "quiet-link"),
   ), el("main", {}, el("div", { class: "intro" }, el("h1", {}, t.title), el("p", {}, t.lead)), formArea, outcome), el("footer", {}, t.footer), announce);
+  // A pasted screenshot or a dropped image file opens the Image tab with that file.
+  const imageIn = (data: DataTransfer | null) => [...(data?.files || [])].find((file) => file.type.startsWith("image/"));
+  document.addEventListener("paste", (event) => {
+    const file = imageIn(event.clipboardData);
+    if (file) { event.preventDefault(); takeImage(file); }
+  });
+  document.addEventListener("dragover", (event) => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault(); document.body.classList.add("dragging");
+  });
+  document.addEventListener("dragleave", (event) => { if (!event.relatedTarget) document.body.classList.remove("dragging"); });
+  document.addEventListener("drop", (event) => {
+    document.body.classList.remove("dragging");
+    const file = imageIn(event.dataTransfer);
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    if (file) takeImage(file);
+    else { state.fileError = t.fileErrors.type; state.mode = "image"; render(); }
+  });
   const window = await chrome.windows.getCurrent();
   captureKey = `capture:${window.id}`;
   chrome.storage.onChanged.addListener((changes, area) => {

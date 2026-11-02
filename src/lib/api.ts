@@ -63,8 +63,14 @@ export async function request(path: string, init: RequestInit = {}): Promise<Res
   return response;
 }
 
+/** A Blob (an image file) goes as the raw body with its own type; anything else as JSON. */
+function payload(body: unknown): { body: BodyInit; type: string } {
+  return body instanceof Blob ? { body, type: body.type } : { body: JSON.stringify(body), type: "application/json" };
+}
+
 export async function api<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const response = await request(path, { method: body === undefined ? "GET" : "POST", body: body === undefined ? undefined : JSON.stringify(body), signal: signal || AbortSignal.timeout(30_000) });
+  const sent = body === undefined ? undefined : payload(body);
+  const response = await request(path, { method: sent ? "POST" : "GET", body: sent?.body, headers: sent ? { "Content-Type": sent.type } : undefined, signal: signal || AbortSignal.timeout(30_000) });
   return response.json() as Promise<T>;
 }
 
@@ -82,9 +88,10 @@ async function publicRequest(path: string, body: unknown, signal?: AbortSignal):
   if (!path.startsWith("/public/")) throw new Error("invalid_public_path");
   let response: Response;
   try {
+    const sent = payload(body);
     response = await fetch(`${config.apiUrl}/api/v1${path}`, {
-      method: "POST", body: JSON.stringify(body), credentials: "omit", cache: "no-store",
-      redirect: "error", headers: { "Content-Type": "application/json" },
+      method: "POST", body: sent.body, credentials: "omit", cache: "no-store",
+      redirect: "error", headers: { "Content-Type": sent.type },
       signal: signal || AbortSignal.timeout(60_000),
     });
   } catch (error) {

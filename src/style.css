@@ -147,3 +147,10 @@ footer { text-align: center; border-top: 1px solid var(--rule); padding: 18px; f
   .active .disc { animation: pulse 1.6s ease-out infinite; }
 }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 35%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+.field-title { font-weight: 650; margin: 0 0 8px; }
+.image-drop { display: grid; gap: 10px; justify-items: start; padding: 16px; border: 1px solid var(--edge); border-radius: var(--radius-card); background: var(--paper); }
+.image-drop p { margin: 0; }
+.dragging .image-drop { border: 2px solid var(--ink); padding: 15px; background: var(--soft); }
+.image-file { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--rule); border-radius: var(--radius-card); background: var(--paper); }
+.image-file img { width: 64px; height: 64px; object-fit: cover; border-radius: var(--radius-tag); background: var(--soft); }
+.image-file p { margin: 0; display: grid; gap: 2px; overflow-wrap: anywhere; }

@@ -11,6 +11,9 @@ and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface co
 
 - Select text → right-click **Vérifier ce texte avec Checky** → review the captured passage → verify.
 - Right-click a public link or image, or paste its URL in the panel.
+- Examine an image that has no public link (a WhatsApp photo, a screenshot): choose the file, drop it on
+  the panel or paste it with Ctrl+V. JPEG, PNG, WebP or GIF up to 5 MB, checked in the panel before
+  anything is sent.
 - Use public text/link checks and image examination immediately, without signing in or fetching a token.
 - Read related published verdicts with their claim, newsroom and date. A related claim is not an
   automatic verdict on your passage. For a new topic, examine the external sources; no verdict is invented.
@@ -112,10 +115,14 @@ are discarded. Preparation uses configured Groq/Gemini/NVIDIA providers only, ne
 fallback. Validated plans are reused in bounded process memory for 10 minutes; persistent gateway
 response caching is disabled for this preparation. AI call metadata, not the prompt, is logged.
 Disable preparation with `PUBLIC_PREPARATION_ENABLED=false`. Private newsroom checks may use AI
-providers for their existing analysis. The image endpoint downloads public images; it forwards bytes to a pixel detector only
+providers for their existing analysis. The image endpoint downloads public images, or receives the file you chose through
+`/public/image-check/file` (or `/workspaces/{ws}/image-check/file` in newsroom mode), and stores
+neither; it forwards bytes to a pixel detector only
 when the operator explicitly enables a validated service. Anonymous detector access has an
 additional, separate opt-in. Do not submit confidential material. Reverse-image services receive
-the image URL only after you click their link.
+the image URL only after you click their link. For a file they receive nothing: their links open
+the services' upload pages and you drop the image there yourself. Saving a dossier from a file does
+not attach the image; add it from the dossier's sources.
 
 The public text/image endpoints share per-process limits: 12 requests per address per 10 minutes,
 1,000 requests per 24-hour budget period, and two concurrent checks. Inputs are bounded; images
@@ -137,8 +144,8 @@ no Tavily account. Its free plan allows 1,000 searches a month, and a check usua
 out, searches show as unavailable and no paid overage is used. Wikipedia is queried directly.
 A local API without a key keeps searching DuckDuckGo.
 
-Limitations: protected pages/images, `blob:`/`data:` images, screenshots, OCR, Firefox and Safari
-are not supported by this version. The panel can verify a manually entered image caption, but
+Limitations: protected pages/images and `blob:`/`data:` images cannot be fetched by address (save
+them and send the file instead); OCR, Firefox and Safari are not supported by this version. The panel can verify a manually entered image caption, but
 does not claim to understand an image's scene from pixels.
 
 ## Development

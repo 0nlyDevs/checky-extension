@@ -92,3 +92,20 @@ test("public streams preserve stage events without consulting authentication", a
   assert.equal(calls.length, 1);
   assert.equal((calls[0]?.init.headers as Record<string, string>).Authorization, undefined);
 });
+
+test("an image file goes as its own bytes, anonymously or with the session JWT", async () => {
+  globalThis.fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), init });
+    return String(url).endsWith("/api/auth/token") ? Response.json({ token: value }) : Response.json({ source: "file" });
+  };
+  const file = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
+  assert.deepEqual(await publicApi("/public/image-check/file", file), { source: "file" });
+  assert.equal(calls[0]?.init.body, file);
+  assert.equal((calls[0]?.init.headers as Record<string, string>)["Content-Type"], "image/png");
+  assert.equal((calls[0]?.init.headers as Record<string, string>).Authorization, undefined);
+  await api("/workspaces/test/image-check/file", file);
+  const sent = calls.at(-1)!;
+  assert.equal(sent.init.body, file);
+  assert.equal((sent.init.headers as Record<string, string>)["Content-Type"], "image/png");
+  assert.equal((sent.init.headers as Record<string, string>).Authorization, `Bearer ${value}`);
+});

@@ -1,5 +1,8 @@
 export const MAX_TEXT = 6000;
 export const CAPTURE_TTL = 15 * 60 * 1000;
+/** The API's limits for an image sent as a file, checked here so a refused file never leaves. */
+export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export type Mode = "text" | "link" | "image";
 export type Capture = {
   id: string;
@@ -58,4 +61,11 @@ export function checkBody(mode: Mode, text: string, url: string): { text?: strin
 
 export function hostname(raw: string): string {
   try { return new URL(raw).hostname.replace(/^www\./, ""); } catch { return raw; }
+}
+
+export function imageFileProblem(file: { type: string; size: number }): "type" | "empty" | "size" | null {
+  if (!(IMAGE_TYPES as readonly string[]).includes(file.type)) return "type";
+  if (!file.size) return "empty";
+  if (file.size > MAX_IMAGE_BYTES) return "size";
+  return null;
 }
