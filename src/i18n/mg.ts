@@ -95,4 +95,91 @@ export const mg: Overrides = {
     dismiss: "Hidio ny taratasy", // relire (mg)
     frameName: "sary-fotoana.jpg", // relire (mg)
   },
+  menuCommunique: "Hamarino ity fanambarana ity", // relire (mg)
+  menuPage: "Pejy ofisialy ve?", // relire (mg)
+  menuReply: "Valio amin'ny fandavana", // relire (mg)
+  tone: {
+    title: "Famantarana tokony hojerena", // relire (mg)
+    local: "Vakiana eto amin'ity fitaovana ity: tsy nisy nalefa.", // relire (mg)
+    help: "Ny feo mampatahotra dia antony hijery akaiky kokoa, fa tsy didy mihitsy.", // relire (mg)
+    levels: { sensationnaliste: "Feo mampihetsi-po", "marqué": "Feo voamarika", neutre: "Feo tsy mitongilana" }, // relire (mg)
+    kinds: { caps: "Renibe", exclamations: "Famantarana !", urgency: "Hashika", share: "Fiangaviana hizara", emotive: "Teny mampihetsi-po", hidden: "« Afenin'izy ireo »", emoji: "Emoji fampitandremana" }, // relire (mg)
+    risk: { high: "Loza raha miely: ambony", medium: "Loza raha miely: antonony", low: "Loza raha miely: ambany" }, // relire (mg)
+    riskKinds: { violence: "Fiangaviana herisetra", accusation: "Fiampangana olona", panic: "Lohahevitra mampatahotra", fake_order: "Endrik'ody na fanambarana ofisialy" }, // relire (mg)
+  },
+  card: {
+    name: "Checky",
+    close: "Hidio", // relire (mg)
+    seeAll: "Jereo daholo", // relire (mg)
+    pending: "Mitady ny zava-misy sy ny didy nosoniavina i Checky…", // relire (mg)
+    running: "Mitady ny zava-misy i Checky…", // relire (mg)
+    failed: "Tsy vita ny fanamarinana. Sokafy ny takelaka Checky.", // relire (mg)
+    facts: "Ny zava-misy", // relire (mg)
+    signed: "Didy nosoniavina", // relire (mg)
+    external: "Mpanao fact-check", // relire (mg)
+    reading: "Fakiana an'i Checky, tokony hovitan'ny mpanao gazety", // relire (mg)
+    watch: "Teny arahina", // relire (mg)
+    noneFound: "Tsy nisy didy nosoniavina na fact-check hita. Tsy midika izany fa marina na diso ny hafatra.", // relire (mg)
+    followed: (newsroom: string) => `Efa manaraka io hafatra io ny ${newsroom}.`, // relire (mg)
+    tracked: "Efa arahina ao amin'ny rédaction-nao io hafatra io.", // relire (mg)
+    readMore: "Vakio ny fanamarinana", // relire (mg)
+    open: "Sokafy", // relire (mg)
+    rating: (publisher: string, rating: string | null) => rating ? `${publisher} : « ${rating} »` : publisher,
+    replyText: (newsroom: string, verdict: string, reason: string) => `Novamarinin'ny ${newsroom} io hafatra io: ${verdict}.${reason ? ` ${reason}` : ""}`, // relire (mg)
+  },
+  place: {
+    title: "Eo amin'ny pejy", // relire (mg)
+    answer: "Valiny eo amin'ny toerana", // relire (mg)
+    answerHelp: "Rehefa manindry havanana ianao, miseho eo ambanin'ny andalana voafidinao ny valiny, eto amin'ny pejy.", // relire (mg)
+    dot: "Teo fifantenana", // relire (mg)
+    dotHelp: "Misy teo kely miseho akaikin'ny lahatsoratra safidinao amin'ity takelaka ity; alefany any amin'ny takelaka Checky izy, fa tsy manamarina irery.", // relire (mg)
+    noAccess: "Tsy mahazo ity takelaka ity i Checky. Tsindrio ny sariny eo amin'ny bara-fitaovan'ity pejy ity, dia andramo indray.", // relire (mg)
+    reply: "Valio amin'ny fandavana", // relire (mg)
+    replyDone: "Napetraka tao amin'ny faritry ny fanehoan-kevitra ny fandavana. Vakio indray, dia alefaso ianao.", // relire (mg)
+    replyNoBox: "Tsy hita ny faritry ny fanehoan-kevitra ambanin'ity hafatra ity. Sokafy ny fanehoan-kevitra, dia andramo indray.", // relire (mg)
+    replyNoAnchor: "Tsy hita intsony ilay hafatra. Safidio indray ny lahatsorany.", // relire (mg)
+  },
+  tasks: {
+    back: "Hiverina amin'ny fanamarinana", // relire (mg)
+    unavailable: "Tsy mbola misy amin'ity serivisy Checky ity io fiasa io.", // relire (mg)
+    communique: {
+      title: "Hamarino ity fanambarana ity", // relire (mg)
+      help: "Ampitahain'i Checky amin'ny rejistra ny fanambarana tany am-boalohany ny lahatsoratra, tsy misy IA. Ny « tsy hita » dia tsy midika hoe diso.", // relire (mg)
+      text: "Lahatsoratry ny fanambarana", // relire (mg)
+      compare: "Ampitahao amin'ny rejistra", // relire (mg)
+      read: "Vakio ny fanambarana", // relire (mg)
+      reading: "Vakiana ny sary…", // relire (mg)
+      readHelp: "Alefa any amin'ny rédaction-nao ny sary hamakiana ny mpamoaka, ny laharana, ny daty sy ny lahatsoratra.", // relire (mg)
+      fields: "Vakin'i Checky, tokony hojerena indray", // relire (mg)
+      fieldsHelp: "Ahitsio izay diso vakiana: ny lahatsoratra ekenao ihany no ampitahaina amin'ny rejistra.", // relire (mg)
+      fieldNames: { issuer: "Mpamoaka", number: "Laharana", date: "Daty", signatory: "Mpanao sonia", text: "Lahatsoratra" }, // relire (mg)
+      confirm: "Ekena ary ampitahao amin'ny rejistra", // relire (mg)
+      imagePublic: "Mila rédaction mifandray ny famakiana lahatsoratra amin'ny sary. Adikao eto ny lahatsoratry ny fanambarana hampitahana amin'ny rejistra ho an'ny besinimaro.", // relire (mg)
+      imageBlocked: "Varoan'ny tranokala misy azy io sary io. Tehirizo, dia safidio ny rakitra.", // relire (mg)
+      chooseFile: "Safidio ny rakitra", // relire (mg)
+      statuses: { authentic: "Mifanaraka amin'ny voalohany", modified: "Lahatsoratra novana", not_found: "Tsy hita ao amin'ny rejistra", inconsistent: "Laharana tsy mifanaraka", none: "Tsy misy fanambarana voalaza" }, // relire (mg)
+      noneHelp: "Tsy milaza andrim-panjakana na laharana fanambarana voasoratra ny lahatsoratra.", // relire (mg)
+      publicNothing: "Tsy milaza na inona na inona momba io lahatsoratra io ny rejistra ho an'ny besinimaro. Tsy manaporofo na inona izany.", // relire (mg)
+      original: "Ny voalohany", // relire (mg)
+      changed: "Isa novana", // relire (mg)
+      diff: "Tsy fitoviana amin'ny voalohany", // relire (mg)
+      removed: "nesorina", // relire (mg)
+      added: "nampiana", // relire (mg)
+    },
+    page: {
+      title: "Pejy ofisialy ve?", // relire (mg)
+      help: "Ampitahain'i Checky amin'ny pejy ofisialy voamarina ao amin'ny Annuaire ny adiresy. Ny adiresy ihany no alefa.", // relire (mg)
+      check: "Karohy ao amin'ny Annuaire", // relire (mg)
+      none: "Tsy voasoratra ao amin'ny Annuaire ny pejy. Tsy mahatonga azy diso na marina izany.", // relire (mg)
+      proof: "Jereo ny porofo", // relire (mg)
+    },
+    reply: {
+      title: "Valio amin'ny fandavana", // relire (mg)
+      help: "Mitady didy nosoniavina sy navoaka momba io andalana io i Checky. Apetraka ao amin'ny faritry ny fanehoan-kevitra ny fandavana: vakioo indray dia alefaso ianao.", // relire (mg)
+      find: "Karohy didy nosoniavina", // relire (mg)
+      none: "Tsy misy didy nosoniavina mifanaraka amin'io andalana io. Tsy manolotra fandavana i Checky raha tsy misy didy nosoniavina.", // relire (mg)
+      text: "Ny fandavana", // relire (mg)
+      place: "Apetraho ao amin'ny faritry ny fanehoan-kevitra", // relire (mg)
+    },
+  },
 };
