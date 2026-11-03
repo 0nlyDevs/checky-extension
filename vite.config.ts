@@ -16,7 +16,7 @@ function origin(value: string): string {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
   const local = mode === "development";
-  const webUrl = origin(env.VITE_FANILO_WEB_URL || (local ? "http://localhost:3000" : "https://fanilo-mg.vercel.app"));
+  const webUrl = origin(env.VITE_FANILO_WEB_URL || (local ? "http://localhost:3000" : "https://checky-mg.vercel.app"));
   const apiUrl = origin(env.VITE_FANILO_API_URL || (local ? "http://localhost:8000" : "https://fanilo-api.onrender.com"));
   return {
     base: "./",

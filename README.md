@@ -70,7 +70,7 @@ npm run build
 5. Verify text, a link or an image directly. No login is needed.
 
 To save a dossier, click **Enregistrer dans une rédaction**. Only then is connection offered.
-Sign in at https://fanilo-mg.vercel.app in the same browser profile, click **Actualiser la connexion**
+Sign in at https://checky-mg.vercel.app in the same browser profile, click **Actualiser la connexion**
 and choose your newsroom. The public result stays visible; nothing is saved until you confirm.
 **Ma rédaction** opens the optional authenticated analysis mode. **Continuer sans compte** returns
 to public checks. Public mode does not probe your website session even if you are already signed in.
