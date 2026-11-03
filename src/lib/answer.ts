@@ -28,7 +28,7 @@ export function toneSection(text: string): CardSection | null {
 }
 
 export function verdictLink(id: string, webUrl: string): string {
-  return `${webUrl}/verifies/${encodeURIComponent(id)}`;
+  return `${webUrl}/verdicts/${encodeURIComponent(id)}`;
 }
 
 function signedItem(v: PublishedVerdict, webUrl: string): CardItem | null {

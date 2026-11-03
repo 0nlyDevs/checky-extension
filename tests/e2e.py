@@ -85,7 +85,7 @@ class Fixture(BaseHTTPRequestHandler):
 
     def do_GET(self):
         REQUESTS.append(("GET", self.path, None))
-        if self.path == "/connexion":
+        if self.path == "/sign-in":
             self.send(b"<!doctype html><title>Fixture sign-in</title><p>Connected</p>", content_type="text/html", headers={"Set-Cookie": "fanilo-fixture=connected; HttpOnly; SameSite=Lax; Path=/"})
         elif self.path == "/api/auth/token":
             if "fanilo-fixture=connected" not in self.headers.get("Cookie", ""):
@@ -335,7 +335,7 @@ def main():
                 expect(panel.get_by_text("Connectez votre rédaction", exact=True)).to_be_visible()
                 assert not [r for r in browser_requests if "/api/auth/" in r[1]] and COUNTS["create"] == 0
                 website = context.new_page()
-                website.goto("http://localhost:3000/connexion")
+                website.goto("http://localhost:3000/sign-in")
                 panel.bring_to_front()
                 panel.get_by_role("button", name="Actualiser la connexion", exact=True).click()
                 expect(panel.get_by_label("Rédaction", exact=True)).to_be_visible()
