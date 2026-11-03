@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/img/logo.svg" alt="Checky logo" width="84" height="84">
+
 # Checky — Vérifier ici
 
 **Check a text, a link or an image right where you read it.** No account needed.
