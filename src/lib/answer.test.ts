@@ -28,7 +28,7 @@ test("the public card puts facts first, then the signed verdict, and never a rea
   const card = publicCard(RUMOUR, verify, WEB, "https://news.example/a");
   assert.deepEqual(card.sections.map((s) => s.kind), ["tone", "facts", "signed"]);
   assert.equal(card.sections[2]!.items[0]!.word, "Faux");
-  assert.equal(card.sections[2]!.items[0]!.url, `${WEB}/verifies/${SIGNED.id}`);
+  assert.equal(card.sections[2]!.items[0]!.url, `${WEB}/verdicts/${SIGNED.id}`);
   assert.ok(!card.sections.some((s) => s.kind === "reading"));
   assert.equal(card.reply, undefined, "a démenti is only offered on Facebook");
   assert.ok(publicCard(RUMOUR, verify, WEB, "https://www.facebook.com/groups/1").reply);
@@ -44,7 +44,7 @@ test("without a signed verdict there is no démenti, and fact-checkers are relay
 test("the démenti carries the signed verdict and its link", () => {
   const text = replyText(SIGNED, WEB);
   assert.match(text, /Rédaction démo a vérifié ce message : Faux\. Le communiqué original/);
-  assert.ok(text.endsWith(`${WEB}/verifies/${SIGNED.id}`));
+  assert.ok(text.endsWith(`${WEB}/verdicts/${SIGNED.id}`));
   assert.ok(replyText({ ...SIGNED, post: "FAUX : la JIRAMA annonce 4 h par jour." }, WEB).startsWith("FAUX : la JIRAMA"));
 });
 

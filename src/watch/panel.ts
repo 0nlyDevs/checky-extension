@@ -129,7 +129,7 @@ export function mountWatch(container: HTMLElement, options: Options): { update: 
         el("p", { class: "published-word" }, icon(VERDICT_ICONS[v.verdict] || "help"), t.verdicts[v.verdict]),
         v.reason && el("p", {}, String(v.reason)),
         el("p", { class: "suggestion" }, t.signedBy(String(v.newsroom), frenchDate(String(v.date)))),
-        el("a", { href: httpUrl(`${config.webUrl}/verifies/${encodeURIComponent(v.id)}`) || "#", target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer" }, t.readPublished, icon("external")),
+        el("a", { href: httpUrl(`${config.webUrl}/verdicts/${encodeURIComponent(v.id)}`) || "#", target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer" }, t.readPublished, icon("external")),
       ));
     } else node.append(el("div", { class: "no-conclusion" }, el("h3", {}, icon("help"), t.watch.notSigned), el("p", {}, t.watch.notSignedHelp)));
     if (c.words.length) node.append(el("h3", {}, t.watch.cardWords), el("p", { class: "watch-chips" }, ...c.words.map((w) => el("span", { class: "watch-chip" }, t.watch.badgeWord(w)))));

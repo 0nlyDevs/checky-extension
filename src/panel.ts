@@ -51,7 +51,7 @@ let answerId = 0;
 const clock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 const workspacePath = (ws = state.ws) => `/workspaces/${encodeURIComponent(ws)}`;
-const deskUrl = (ws = state.ws) => `${config.webUrl}/w/${encodeURIComponent(ws)}/affirmations`;
+const deskUrl = (ws = state.ws) => `${config.webUrl}/w/${encodeURIComponent(ws)}/claims`;
 const claimUrl = (id: string, ws = state.sent?.ws || state.ws) => `${deskUrl(ws)}/${encodeURIComponent(id)}`;
 
 function errorText(error: unknown): string {
@@ -172,7 +172,7 @@ function connectionControls(): HTMLElement {
     el("h2", { id: "connection-title" }, state.connecting ? t.connecting : t.signedOut),
     el("p", { class: "muted" }, t.signInHelp),
     state.authError && el("p", { role: "status", class: "notice" }, state.authError),
-    el("div", { class: "button-row" }, link(`${config.webUrl}/connexion`, t.connect, "button ink"), button(t.reconnect, () => { void connect(); }, { disabled: state.connecting })),
+    el("div", { class: "button-row" }, link(`${config.webUrl}/sign-in`, t.connect, "button ink"), button(t.reconnect, () => { void connect(); }, { disabled: state.connecting })),
     el("details", {}, el("summary", {}, t.cookieHelpTitle), el("p", {}, t.cookieHelp)),
   );
 }
@@ -524,7 +524,7 @@ function renderPublicResult(result: PublicResult): HTMLElement {
         el("p", { class: "published-word" }, icon(icons[verdict]), t.verdicts[verdict]),
         entry.reason && el("p", {}, entry.reason),
         el("p", { class: "suggestion" }, t.signedBy(entry.newsroom.name, frenchDate(entry.published_at))),
-        link(`${config.webUrl}/verifies/${encodeURIComponent(entry.id)}`, t.readPublished),
+        link(`${config.webUrl}/verdicts/${encodeURIComponent(entry.id)}`, t.readPublished),
       ));
     }
   } else node.append(el("div", { class: "no-conclusion" }, el("h2", {}, icon("help"), t.publicEmpty), el("p", {}, t.publicEmptyHelp)));
