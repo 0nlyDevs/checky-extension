@@ -8,7 +8,7 @@ import { ALL_WATCH_ORIGINS } from "./src/lib/watch.ts";
 function origin(value: string): string {
   const url = new URL(value);
   if (url.username || url.password || (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname)))) {
-    throw new Error("FANILO URLs must use HTTPS, or HTTP on localhost for development");
+    throw new Error("Checky URLs must use HTTPS, or HTTP on localhost for development");
   }
   return url.origin;
 }

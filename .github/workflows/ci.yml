@@ -28,5 +28,5 @@ jobs:
       - run: uv run --with playwright python tests/e2e.py
       - uses: actions/upload-artifact@v4
         with:
-          name: fanilo-extension
+          name: checky-extension
           path: dist/

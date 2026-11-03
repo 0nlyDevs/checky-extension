@@ -22,7 +22,7 @@ test("image captures reject private browser resources", () => {
   assert.equal(captureFromMenu({ menuItemId: "fanilo-image", srcUrl: "https://images.example/photo.jpg" })?.kind, "image");
 });
 
-test("selected text never makes FANILO fetch and analyze the surrounding page", () => {
+test("selected text never makes Checky fetch and analyze the surrounding page", () => {
   assert.deepEqual(checkBody("text", "  Madagascar quitte l’OMS  ", "https://page.example/other-claims"), { text: "Madagascar quitte l’OMS" });
   assert.deepEqual(checkBody("link", "", "https://page.example/a"), { url: "https://page.example/a" });
   assert.throws(() => checkBody("text", " ", ""));
