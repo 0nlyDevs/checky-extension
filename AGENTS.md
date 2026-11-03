@@ -1,6 +1,6 @@
 # FANILO extension
 
-- npm only. Code, documentation and commits in English; all UI copy in `src/i18n/fr.ts`.
+- npm only. Code, documentation and commits in English. UI copy: French source in `src/i18n/fr.ts`; `en.ts` and `mg.ts` override it (mark Malagasy you write `// relire (mg)`). Read strings through `src/i18n/index.ts`.
 - Manifest V3, TypeScript and Vite. Never request access to all sites or add content scripts for passive monitoring.
 - Only send selected content after an explicit confirmation. Use `textContent`, never inject page or model HTML.
 - The website owns authentication. Use its existing cookie through a credentialed request to its token endpoint; never read cookies or ask for a password inside the extension.

@@ -9,6 +9,11 @@ export const t = {
   menuPage: "Page officielle ?",
   menuReply: "Répondre avec le démenti",
   open: "Ouvrir Checky",
+  settings: {
+    title: "Réglages",
+    language: "Langue de l’interface",
+    languages: { fr: "Français", mg: "Malagasy", en: "English" },
+  },
   modes: { text: "Texte", link: "Lien", image: "Image" },
   modeLabel: "Contenu à examiner",
   input: "L’affirmation à vérifier",
@@ -185,7 +190,8 @@ export const t = {
   card: {
     name: "Checky",
     close: "Fermer",
-    pending: "Confirmez l’envoi dans le panneau Checky pour chercher les faits et les verdicts signés.",
+    seeAll: "Voir tout",
+    pending: "Checky cherche les faits et les verdicts signés…",
     running: "Checky cherche les faits…",
     failed: "La vérification n’a pas abouti. Voir le panneau Checky.",
     facts: "Les faits",
@@ -199,6 +205,7 @@ export const t = {
     readMore: "Lire la vérification",
     open: "Ouvrir",
     rating: (publisher: string, rating: string | null) => rating ? `${publisher} : « ${rating} »` : publisher,
+    replyText: (newsroom: string, verdict: string, reason: string) => `${newsroom} a vérifié ce message : ${verdict}.${reason ? ` ${reason}` : ""}`,
   },
   place: {
     title: "Sur la page",

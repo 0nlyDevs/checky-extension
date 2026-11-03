@@ -40,6 +40,7 @@ export type Review = { publisher: string; url: string; rating: string | null; da
 export type VerifyResult = {
   status: "signed" | "external" | "facts" | "none";
   signed?: PublishedVerdict | null; external?: Review[]; known?: KnownFact[];
+  facts?: { registry?: RegistryMatch | null };
   followed_since?: string | null; followed_by?: string | null; search_status?: string;
 };
 /** `registry.match_text`: which registered original a circulating text quotes, and how it differs. */

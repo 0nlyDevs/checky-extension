@@ -5,7 +5,8 @@ shows sources and related published verifications. **No account is needed.** A j
 decides what to publish; a signed-in newsroom mode also offers AI-assisted analysis.
 
 The extension connects to the same newsroom API as the [web desk](https://github.com/0nlyDevs/fanilo-base)
-and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). All interface copy is French.
+and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). The interface is in French, Malagasy
+or English (panel **Réglages**); French is the source and fills any gap.
 
 ## What works
 
@@ -96,7 +97,7 @@ The manifest's host permissions are generated from exactly those two origins.
 | --- | --- |
 | `contextMenus` | Receive only the selection, image URL or link chosen with a right-click |
 | `sidePanel` | Show the verification beside the page |
-| `storage` | Keep short-lived authentication and capture handoff in `storage.session` |
+| `storage` | Keep short-lived authentication and capture handoff in `storage.session`; the language preference in `storage.local` |
 | Checky web/API origins | Call public checks; obtain a session JWT only after an explicit optional connection |
 
 There are **no content scripts**, no access to all sites, no cookie-reading permission, no

@@ -189,3 +189,16 @@ footer { text-align: center; border-top: 1px solid var(--rule); padding: 18px; f
 .privacy-details { margin-top: 4px; font-size: .875rem; color: var(--muted); }
 .privacy-details summary { display: flex; align-items: center; min-height: 44px; color: var(--ink); }
 .privacy-details[open] summary { margin-bottom: 4px; }
+.settings { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--rule); font-size: .875rem; }
+.settings summary { display: flex; align-items: center; min-height: 44px; }
+.settings label { margin-top: 12px; }
+.task-section { display: grid; gap: 12px; }
+.task-section > h2, .task-section > p { margin: 0; }
+.task-section textarea, .task-section input { width: 100%; }
+.registry-result { border: 1px solid var(--rule); border-radius: var(--radius-card); background: var(--paper); padding: 14px; overflow-wrap: anywhere; }
+.registry-result h3 { margin: 0 0 8px; }
+.registry-result p { margin: 0 0 8px; }
+.registry-diff { line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.registry-diff del { background: var(--false-soft); color: var(--false-ink); text-decoration-thickness: 2px; }
+.registry-diff ins { background: var(--true-soft); color: var(--true-ink); text-decoration: none; }
+.reply-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; background: var(--soft); border-radius: var(--radius-tag); padding: 12px; }

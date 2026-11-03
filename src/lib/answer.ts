@@ -3,7 +3,7 @@
  * Order: the local warning signs, then the facts, then signed verdicts or fact-checkers, and only
  * for a signed-in newsroom the reading (dashed). The public card never carries a reading.
  */
-import { t } from "../i18n/fr.ts";
+import { lang, LOCALES, t } from "../i18n/index.ts";
 import { analyse, risk } from "./tone.ts";
 import { httpUrl } from "./safety.ts";
 import type { LinkResult, PublicMatch, PublishedVerdict, RegistryMatch, Verdict, VerifyResult } from "./types.ts";
@@ -11,13 +11,12 @@ import type { LinkResult, PublicMatch, PublishedVerdict, RegistryMatch, Verdict,
 export type CardItem = { text: string; detail?: string; url?: string; link?: string; verdict?: Verdict; word?: string };
 export type CardSection = { kind: "tone" | "facts" | "signed" | "external" | "reading" | "watch"; title: string; items: CardItem[] };
 export type CardReply = { label: string; text: string; done: string; noBox: string; noAnchor: string };
-export type CardModel = { state: "pending" | "done" | "error"; status: string; sections: CardSection[]; reply?: CardReply; labels: { name: string; close: string } };
+export type CardModel = { state: "pending" | "done" | "error"; status: string; sections: CardSection[]; reply?: CardReply; labels: { name: string; close: string; seeAll: string } };
 
 const VERDICTS: readonly Verdict[] = ["true", "misleading", "false", "unverifiable"];
 export const asVerdict = (value: unknown): Verdict | null => VERDICTS.includes(value as Verdict) ? value as Verdict : null;
-const dateFormat = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-const day = (iso?: string | null) => { const time = Date.parse(iso || ""); return Number.isNaN(time) ? "" : dateFormat.format(time); };
-const labels = { name: t.card.name, close: t.card.close };
+const day = (iso?: string | null) => { const time = Date.parse(iso || ""); return Number.isNaN(time) ? "" : new Intl.DateTimeFormat(LOCALES[lang], { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(time); };
+const labels = () => ({ name: t.card.name, close: t.card.close, seeAll: t.card.seeAll });
 
 /** The tone and the danger, read on this device. Null when nothing stands out. */
 export function toneSection(text: string): CardSection | null {
@@ -44,7 +43,7 @@ function signedItem(v: PublishedVerdict, webUrl: string): CardItem | null {
 export function replyText(v: PublishedVerdict, webUrl: string): string {
   const verdict = asVerdict(v.verdict);
   const link = verdictLink(v.id, webUrl);
-  const body = v.post?.trim() || `${v.newsroom.name} a vérifié ce message : ${verdict ? t.verdicts[verdict] : v.verdict}.${v.reason ? ` ${v.reason}` : ""}`;
+  const body = v.post?.trim() || t.card.replyText(v.newsroom.name, verdict ? t.verdicts[verdict] : v.verdict, v.reason || "");
   return `${body.slice(0, 900)}\n${link}`;
 }
 
@@ -63,12 +62,12 @@ export function isTikTok(url: string): boolean {
 
 export function pendingCard(text: string, running = false): CardModel {
   const tone = toneSection(text);
-  return { state: "pending", status: running ? t.card.running : t.card.pending, sections: tone ? [tone] : [], labels };
+  return { state: "pending", status: running ? t.card.running : t.card.pending, sections: tone ? [tone] : [], labels: labels() };
 }
 
 export function failedCard(text: string): CardModel {
   const tone = toneSection(text);
-  return { state: "error", status: t.card.failed, sections: tone ? [tone] : [], labels };
+  return { state: "error", status: t.card.failed, sections: tone ? [tone] : [], labels: labels() };
 }
 
 /** Signed out: `/public/verify`, facts and signed verdicts or fact-checkers, never a reading. */
@@ -85,7 +84,7 @@ export function publicCard(text: string, verify: VerifyResult, webUrl: string, p
   if (!signed && reviews.length) sections.push({ kind: "external", title: t.card.external, items: reviews.slice(0, 3) });
   const status = verify.followed_by ? t.card.followed(verify.followed_by) : !signed && !reviews.length ? t.card.noneFound : "";
   const reply = replyFor(verify.signed, webUrl, pageUrl);
-  return { state: "done", status, sections, labels, ...(reply ? { reply } : {}) };
+  return { state: "done", status, sections, labels: labels(), ...(reply ? { reply } : {}) };
 }
 
 /** Signed in: the link check's reading (dashed), the registry fact and the fact-checkers found. */
@@ -98,7 +97,7 @@ export function newsroomCard(text: string, result: LinkResult, registry: Registr
   if (checks.length) sections.push({ kind: "external", title: t.card.external, items: checks.slice(0, 3) });
   const verdict = asVerdict(result.analysis?.verdict);
   if (verdict && result.analysis) sections.push({ kind: "reading", title: t.card.reading, items: [{ verdict, word: t.verdicts[verdict], text: result.analysis.reason }] });
-  return { state: "done", status: result.tracked ? t.card.tracked : !checks.length && !verdict ? t.card.noneFound : "", sections, labels };
+  return { state: "done", status: result.tracked ? t.card.tracked : !checks.length && !verdict ? t.card.noneFound : "", sections, labels: labels() };
 }
 
 /** A post the watch flagged: the watched words it names, the signed verdict it matches, its tone. */
@@ -110,5 +109,5 @@ export function watchCard(text: string, words: string[], match: PublicMatch | nu
   const tone = toneSection(text);
   if (tone) sections.push(tone);
   const reply = replyFor(match?.verdict, webUrl, pageUrl);
-  return { state: "done", status: "", sections, labels, ...(reply ? { reply } : {}) };
+  return { state: "done", status: "", sections, labels: labels(), ...(reply ? { reply } : {}) };
 }

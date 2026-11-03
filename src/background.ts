@@ -1,10 +1,13 @@
-import { t } from "./i18n/fr.ts";
+import { t } from "./i18n/index.ts";
 import { checkyPage } from "./page/inject.ts";
 import { captureFromMenu, httpUrl, MAX_TEXT } from "./lib/safety.ts";
 import type { Capture } from "./lib/safety.ts";
+import { localizeMenus, watchMenuLanguage } from "./menus.ts";
 
 const WEB = ["http://*/*", "https://*/*"];
 const FACEBOOK = ["https://*.facebook.com/*", "https://facebook.com/*"];
+
+watchMenuLanguage();
 
 async function openPanel(tab?: chrome.tabs.Tab): Promise<void> {
   // Call before awaiting storage so the context-menu user gesture is retained.
@@ -25,21 +28,23 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({ id: "fanilo-communique", title: t.menuCommunique, contexts: ["selection", "image"], documentUrlPatterns: WEB });
     chrome.contextMenus.create({ id: "fanilo-page", title: t.menuPage, contexts: ["link"], targetUrlPatterns: WEB, documentUrlPatterns: WEB });
     chrome.contextMenus.create({ id: "fanilo-reply", title: t.menuReply, contexts: ["selection"], documentUrlPatterns: FACEBOOK });
+    void localizeMenus();
   });
 });
 
 /** Remember where the selection is, in that tab only, so the answer and the démenti land there. */
-function anchor(capture: Capture): void {
+async function anchor(capture: Capture): Promise<void> {
   if (capture.kind !== "text" || capture.tabId === undefined) return;
-  void chrome.scripting.executeScript({ target: { tabId: capture.tabId, frameIds: [capture.frameId || 0] }, func: checkyPage, args: [{ op: "anchor" }] }).catch(() => undefined);
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: capture.tabId, frameIds: [capture.frameId || 0] }, func: checkyPage, args: [{ op: "anchor" }] });
+  } catch { /* A browser-protected tab cannot hold an answer; the panel still receives the capture. */ }
 }
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   const capture = captureFromMenu(info, tab?.id);
   if (!capture || !tab) return;
   const opening = openPanel(tab);
-  anchor(capture);
-  void chrome.storage.session.set({ [`capture:${tab.windowId}`]: capture });
+  void anchor(capture).then(() => chrome.storage.session.set({ [`capture:${tab.windowId}`]: capture }));
   void opening;
 });
 
@@ -49,10 +54,13 @@ chrome.action.onClicked.addListener((tab) => { void openPanel(tab); });
 // Only this extension's own injected script in a web tab is heard; nothing else may send.
 chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   const value = message as { type?: unknown; text?: unknown } | null;
-  if (sender.id !== chrome.runtime.id || !sender.tab?.id || sender.tab.windowId === undefined || value?.type !== "checky:selection" || typeof value.text !== "string") return;
+  if (sender.id !== chrome.runtime.id || !sender.tab?.id || sender.tab.windowId === undefined) return;
+  if (value?.type === "checky:see-all") { void openPanel(sender.tab); return; }
+  if (value?.type !== "checky:selection" || typeof value.text !== "string") return;
   const text = value.text.trim();
   const pageUrl = httpUrl(sender.url || "");
   if (!text || !pageUrl) return;
   const capture: Capture = { id: crypto.randomUUID(), kind: "text", intent: "check", text: text.slice(0, MAX_TEXT), url: "", pageUrl, createdAt: Date.now(), truncated: text.length > MAX_TEXT, tabId: sender.tab.id, frameId: sender.frameId || 0 };
+  void openPanel(sender.tab);
   void chrome.storage.session.set({ [`capture:${sender.tab.windowId}`]: capture });
 });

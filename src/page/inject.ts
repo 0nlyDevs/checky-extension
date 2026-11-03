@@ -193,6 +193,13 @@ svg { width:18px; height:18px; flex:0 0 auto; }
       act.addEventListener("click", () => { void fill(reply.text).then((r) => { note.textContent = r === "filled" ? reply.done : r === "no_box" ? reply.noBox : reply.noAnchor; }); });
       wrap.append(act, note);
     }
+    const seeAll = node("button", "act", card.labels.seeAll);
+    seeAll.type = "button";
+    seeAll.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void chrome.runtime.sendMessage({ type: "checky:see-all" });
+    });
+    wrap.append(seeAll);
     root.append(wrap);
   }
 
