@@ -10,6 +10,7 @@ import { settingsSection } from "./settings.ts";
 import { failedCard, pendingCard, publicCard, replyText } from "./lib/answer.ts";
 import { glyphs, inTab } from "./lib/tab.ts";
 import { checkBody, frenchDate, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, validCapture } from "./lib/safety.ts";
+import { shrinkImage } from "./lib/shrink.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
 import type { GestureFact, ImageResult, LinkResult, Me, Preparation, PublicResult, RegistryMatch, Step, StepKey, Verdict, VerifyResult } from "./lib/types.ts";
 import { mountWatch } from "./watch/panel.ts";
@@ -33,7 +34,7 @@ const state = {
   quickVerify: null as VerifyResult | null,
   registry: null as RegistryMatch | null,
   gestures: [] as GestureFact[], taskBusy: false, taskChecked: false, taskError: "",
-  file: null as File | null, fileError: "",
+  file: null as File | null, fileError: "", reduced: false,
   running: false, saving: false, complete: false, error: "", revision: 0,
   result: null as LinkResult | null, image: null as ImageResult | null, sent: null as Sent | null,
   publicResult: null as PublicResult | null,
@@ -91,9 +92,26 @@ function setFile(file: File | null): void {
   if (state.file) preview = URL.createObjectURL(state.file);
 }
 
+let shrinking = 0;
+
+/** A new image replaces the previous one, its link included, even when it is refused: otherwise
+ * « Examiner » would quietly send the earlier image again. A photo over 5 MB, or in a format
+ * Chrome reads but the API does not, is reduced here first (`lib/shrink.ts`). */
 function takeImage(file: File): void {
   if (state.running || state.saving) return;
   stop(); resetResults(); state.mode = "image"; state.truncated = false;
+  state.url = ""; state.reduced = false;
+  const id = ++shrinking;
+  const problem = imageFileProblem(file);
+  if (problem === "size" || (problem === "type" && file.type.startsWith("image/"))) {
+    setFile(null); state.fileError = t.shrinking; render();
+    void shrinkImage(file).then((small) => {
+      if (id !== shrinking || state.running || state.saving) return;
+      if (small) { setFile(small); state.reduced = true; } else setFile(file);
+      render();
+    });
+    return;
+  }
   setFile(file); render();
 }
 
@@ -104,8 +122,9 @@ function imageFields(form: HTMLFormElement, busy: boolean): void {
     form.append(el("p", { class: "field-title" }, t.imageFile), el("div", { class: "image-file", role: "group", "aria-label": t.chosenImage },
       thumbnail,
       el("p", {}, el("strong", {}, state.file.name || t.chosenImage), el("span", { class: "muted" }, t.fileSize(state.file.size))),
-      button(t.removeImage, () => { setFile(null); resetResults(); render(); }, { class: "quiet", disabled: busy }),
+      button(t.removeImage, () => { shrinking++; setFile(null); state.url = ""; state.reduced = false; resetResults(); render(); }, { class: "quiet", disabled: busy }),
     ));
+    if (state.reduced) form.append(el("p", { class: "muted" }, t.reducedImage));
   } else {
     const input = el("input", { id: "image-file", type: "file", accept: IMAGE_TYPES.join(","), hidden: true, disabled: busy });
     input.addEventListener("change", () => { const file = input.files?.[0]; if (file) takeImage(file); });
@@ -557,6 +576,8 @@ function log(text: string): void { state.log.push({ time: clock.format(new Date(
 
 async function run(): Promise<void> {
   if (state.audience === "newsroom" && !state.ws) return;
+  // A heavy photo is still being reduced: the click waits for it rather than sending nothing.
+  if (state.mode === "image" && state.fileError === t.shrinking) return;
   const file = state.mode === "image" ? state.file : null;
   let body: { text?: string; url?: string } = {};
   if (!file) {
@@ -682,7 +703,7 @@ function applyCapture(capture: Capture): void {
   state.quickVerify = null; state.registry = null; state.gestures = []; state.taskChecked = false; state.taskError = "";
   void chrome.storage.session.remove(captureKey);
   state.mode = capture.kind; state.text = capture.text; state.url = capture.url;
-  state.caption = ""; state.pageUrl = capture.pageUrl; state.truncated = capture.truncated; setFile(null);
+  state.caption = ""; state.pageUrl = capture.pageUrl; state.truncated = capture.truncated; shrinking++; state.reduced = false; setFile(null);
   render(); document.querySelector<HTMLElement>(state.mode === "text" ? "#content" : "#content-url")?.focus();
   if (capture.kind === "text" && capture.tabId !== undefined && capture.intent !== "page") void answerOnPage(capture);
 }
@@ -743,8 +764,8 @@ async function start(): Promise<void> {
     if (file) { takeImage(file); return; }
     // Like a dropped image, a refused file replaces what was on screen, so its error is never shown beside an older one.
     if (state.running || state.saving) return;
-    stop(); resetResults(); state.mode = "image"; state.truncated = false;
-    setFile(null); state.fileError = t.fileErrors.type; render();
+    stop(); resetResults(); state.mode = "image"; state.truncated = false; shrinking++;
+    state.url = ""; state.reduced = false; setFile(null); state.fileError = t.fileErrors.type; render();
   });
   const window = await chrome.windows.getCurrent();
   captureKey = `capture:${window.id}`;

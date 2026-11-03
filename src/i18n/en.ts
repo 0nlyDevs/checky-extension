@@ -24,6 +24,8 @@ export const en: Overrides = {
   chosenImage: "Chosen image",
   removeImage: "Remove",
   imageMissing: "Choose an image, paste a screenshot or give its public address.",
+  shrinking: "Image too heavy: Checky is preparing a smaller copy…",
+  reducedImage: "Image too heavy or in another format: Checky examines a smaller copy (JPEG), without the original file’s data.",
   fileErrors: {
     type: "This format is not supported. Choose a JPEG, PNG, WebP or GIF image.",
     empty: "This file is empty.",

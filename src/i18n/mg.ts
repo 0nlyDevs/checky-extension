@@ -16,6 +16,8 @@ export const mg: Overrides = {
     language: "Fiteny ampiasaina", // relire (mg)
   },
   modes: { text: "Lahatsoratra", link: "Rohy", image: "Sary" }, // relire (mg)
+  shrinking: "Mavesatra loatra ny sary: manomana dika nohakelezina i Checky…", // relire (mg)
+  reducedImage: "Mavesatra loatra na amin’ny endrika hafa ny sary: dika nohakelezina (JPEG) no dinihin’i Checky, tsy misy ny angon-drakitry ny rakitra tany am-boalohany.", // relire (mg)
   input: "Ilay filazana hohamarinina", // relire (mg)
   url: "Rohy hodinihina", // relire (mg)
   chooseImage: "Misafidiana sary", // relire (mg)

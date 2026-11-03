@@ -26,6 +26,8 @@ export const t = {
   chosenImage: "Image choisie",
   removeImage: "Retirer",
   imageMissing: "Choisissez une image, collez une capture ou indiquez son adresse publique.",
+  shrinking: "Image trop lourde : Checky en prépare une copie réduite…",
+  reducedImage: "Image trop lourde ou dans un autre format : Checky examine une copie réduite (JPEG), sans les données du fichier d’origine.",
   fileErrors: {
     type: "Ce format n’est pas pris en charge. Choisissez une image JPEG, PNG, WebP ou GIF.",
     empty: "Ce fichier est vide.",
