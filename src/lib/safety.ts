@@ -4,9 +4,17 @@ export const CAPTURE_TTL = 15 * 60 * 1000;
 export const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export type Mode = "text" | "link" | "image";
+/** What the right-click asked for: a check, a communiqué against the registry, whether a page is
+ * an institution's declared one, or the signed démenti to answer a Facebook post with. */
+export type Intent = "check" | "communique" | "page" | "reply";
+export const INTENTS: readonly Intent[] = ["check", "communique", "page", "reply"];
 export type Capture = {
   id: string;
   kind: Mode;
+  intent?: Intent;
+  /** The tab and frame the right-click happened in, to place the answer there under `activeTab`. */
+  tabId?: number;
+  frameId?: number;
   text: string;
   url: string;
   pageUrl: string;
@@ -46,14 +54,32 @@ export function httpUrl(raw: string): string | null {
   }
 }
 
-export function captureFromMenu(info: { menuItemId: string | number; selectionText?: string; srcUrl?: string; linkUrl?: string; pageUrl?: string }): Capture | null {
-  const kind = info.menuItemId === "fanilo-text" ? "text" : info.menuItemId === "fanilo-image" ? "image" : info.menuItemId === "fanilo-link" ? "link" : null;
-  if (!kind) return null;
+const MENUS: Record<string, { intent: Intent; kind?: Mode }> = {
+  "fanilo-text": { intent: "check", kind: "text" },
+  "fanilo-image": { intent: "check", kind: "image" },
+  "fanilo-link": { intent: "check", kind: "link" },
+  "fanilo-communique": { intent: "communique" },
+  "fanilo-page": { intent: "page", kind: "link" },
+  "fanilo-reply": { intent: "reply", kind: "text" },
+};
+
+type MenuInfo = { menuItemId: string | number; selectionText?: string; srcUrl?: string; linkUrl?: string; pageUrl?: string; frameId?: number };
+
+export function captureFromMenu(info: MenuInfo, tabId?: number): Capture | null {
+  const menu = MENUS[String(info.menuItemId)];
+  if (!menu) return null;
+  // « Vérifier ce communiqué » takes a selection or an image, whichever was right-clicked.
+  const kind: Mode = menu.kind || (info.selectionText?.trim() ? "text" : "image");
   const text = kind === "text" ? (info.selectionText || "").trim() : "";
   const url = kind === "image" ? httpUrl(info.srcUrl || "") : kind === "link" ? httpUrl(info.linkUrl || "") : "";
   if ((kind === "text" && !text) || (kind !== "text" && !url)) return null;
-  return { id: crypto.randomUUID(), kind, text: text.slice(0, MAX_TEXT), url: url || "", pageUrl: httpUrl(info.pageUrl || "") || "", createdAt: Date.now(), truncated: text.length > MAX_TEXT };
+  return {
+    id: crypto.randomUUID(), kind, intent: menu.intent, text: text.slice(0, MAX_TEXT), url: url || "", pageUrl: httpUrl(info.pageUrl || "") || "", createdAt: Date.now(), truncated: text.length > MAX_TEXT,
+    ...(Number.isInteger(tabId) && tabId! >= 0 ? { tabId, frameId: Number.isInteger(info.frameId) && info.frameId! >= 0 ? info.frameId : 0 } : {}),
+  };
 }
+
+const optionalId = (value: unknown) => value === undefined || (Number.isInteger(value) && (value as number) >= 0);
 
 export function validCapture(value: unknown, now = Date.now()): value is Capture {
   if (!value || typeof value !== "object") return false;
@@ -61,6 +87,7 @@ export function validCapture(value: unknown, now = Date.now()): value is Capture
   return typeof c.id === "string" && ["text", "link", "image"].includes(c.kind || "")
     && typeof c.text === "string" && c.text.length <= MAX_TEXT && typeof c.url === "string"
     && typeof c.pageUrl === "string" && typeof c.truncated === "boolean"
+    && (c.intent === undefined || INTENTS.includes(c.intent)) && optionalId(c.tabId) && optionalId(c.frameId)
     && typeof c.createdAt === "number" && now >= c.createdAt && now - c.createdAt < CAPTURE_TTL
     && (!c.pageUrl || !!httpUrl(c.pageUrl))
     && (c.kind === "text" ? !!c.text.trim() : !!httpUrl(c.url));

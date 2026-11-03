@@ -1,4 +1,5 @@
 import type { IconName } from "./icons.ts";
+import { httpUrl, isUrlLabel, middleTruncate } from "./safety.ts";
 
 type Child = Node | string | false | null | undefined;
 
@@ -43,4 +44,15 @@ export function ripple(event: PointerEvent): void {
   wave.style.cssText = `width:${size}px;height:${size}px;left:${event.clientX - box.left - size / 2}px;top:${event.clientY - box.top - size / 2}px`;
   target.append(wave);
   wave.animate([{ transform: "scale(0)", opacity: 0.24 }, { transform: "scale(1)", opacity: 0 }], { duration: 650, easing: "cubic-bezier(.22,1,.36,1)" }).finished.then(() => wave.remove(), () => wave.remove());
+}
+
+/** A link that opens outside, only for http(s) URLs; anything else stays plain text. */
+export function link(url: string, text: string, className = ""): HTMLElement {
+  const safe = httpUrl(url);
+  if (!safe) return el("span", {}, text);
+  const asUrl = isUrlLabel(text);
+  const clamp = !asUrl && !className.split(" ").some((c) => c === "button" || c === "quiet-link");
+  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: [className, clamp ? "clamp" : ""].filter(Boolean).join(" "), title: asUrl ? safe : text }, asUrl ? middleTruncate(text) : text, icon("external"));
+  if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
+  return anchor;
 }

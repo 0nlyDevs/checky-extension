@@ -1,14 +1,17 @@
 import "@fontsource-variable/bricolage-grotesque/opsz.css";
 import "@fontsource/cormorant-garamond/500-italic.css";
 import "./style.css";
-import { t } from "./i18n/fr.ts";
+import { lang, loadLang, t } from "./i18n/index.ts";
 import { api, ApiError, forgetToken, publicApi, publicStream, stream } from "./lib/api.ts";
 import { config } from "./lib/config.ts";
-import { button, el, icon, ripple } from "./lib/dom.ts";
+import { button, el, icon, link, ripple } from "./lib/dom.ts";
 import type { Icon } from "./lib/dom.ts";
-import { checkBody, frenchDate, hostname, httpUrl, isUrlLabel, IMAGE_TYPES, imageFileProblem, MAX_TEXT, middleTruncate, validCapture } from "./lib/safety.ts";
+import { settingsSection } from "./settings.ts";
+import { failedCard, pendingCard, publicCard, replyText } from "./lib/answer.ts";
+import { glyphs, inTab } from "./lib/tab.ts";
+import { checkBody, frenchDate, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
-import type { ImageResult, LinkResult, Me, Preparation, PublicResult, Step, StepKey, Verdict } from "./lib/types.ts";
+import type { GestureFact, ImageResult, LinkResult, Me, Preparation, PublicResult, RegistryMatch, Step, StepKey, Verdict, VerifyResult } from "./lib/types.ts";
 
 type Sent = { mode: Mode; text: string; caption: string; url: string; file: File | null; pageUrl: string; ws: string; audience: "public" | "newsroom" };
 type Saved = { id: string; ref: string | null; pending: string[] };
@@ -22,6 +25,10 @@ const state = {
   me: null as Me | null, ws: "", connecting: false, authError: "",
   audience: "public" as "public" | "newsroom", savePrompt: false,
   mode: "text" as Mode, text: "", caption: "", url: "", pageUrl: "", truncated: false,
+  capture: null as Capture | null,
+  quickVerify: null as VerifyResult | null,
+  registry: null as RegistryMatch | null,
+  gestures: [] as GestureFact[], taskBusy: false, taskChecked: false, taskError: "",
   file: null as File | null, fileError: "",
   running: false, saving: false, complete: false, error: "", revision: 0,
   result: null as LinkResult | null, image: null as ImageResult | null, sent: null as Sent | null,
@@ -35,17 +42,9 @@ let captureKey = "";
 let captureId = "";
 let queuedCapture: Capture | null = null;
 let preview = "";
+let answerId = 0;
 const clock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-function link(url: string, text: string, className = ""): HTMLElement {
-  const safe = httpUrl(url);
-  if (!safe) return el("span", {}, text);
-  const asUrl = isUrlLabel(text);
-  const clamp = !asUrl && !className.split(" ").some((c) => c === "button" || c === "quiet-link");
-  const anchor = el("a", { href: safe, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", class: [className, clamp ? "clamp" : ""].filter(Boolean).join(" "), title: asUrl ? safe : text }, asUrl ? middleTruncate(text) : text, icon("external"));
-  if (className.split(" ").includes("button")) anchor.addEventListener("pointerdown", ripple);
-  return anchor;
-}
 const workspacePath = (ws = state.ws) => `/workspaces/${encodeURIComponent(ws)}`;
 const deskUrl = (ws = state.ws) => `${config.webUrl}/w/${encodeURIComponent(ws)}/affirmations`;
 const claimUrl = (id: string, ws = state.sent?.ws || state.ws) => `${deskUrl(ws)}/${encodeURIComponent(id)}`;
@@ -190,11 +189,117 @@ function renderAuth(): HTMLElement {
   return node;
 }
 
+function renderRegistryDiff(match: RegistryMatch): HTMLElement | null {
+  if (!match.diff?.length) return null;
+  const lines = el("div", { class: "registry-diff" });
+  for (const part of match.diff) {
+    if (part.op === "equal") lines.append(el("span", {}, part.a || part.b || ""));
+    else {
+      if (part.a) lines.append(el("del", {}, part.a));
+      if (part.b) lines.append(el("ins", {}, part.b));
+    }
+  }
+  return el("section", { class: "registry-diff-wrap" }, el("h3", {}, t.tasks.communique.diff), lines);
+}
+
+async function compareCommunique(): Promise<void> {
+  const text = state.text.trim();
+  if (text.length < 3 || state.taskBusy) return;
+  state.taskBusy = true; state.taskError = ""; state.registry = null; render();
+  try {
+    if (state.ws && state.me) state.registry = await api<RegistryMatch>(`${workspacePath()}/registry/match`, { text });
+    else {
+      const found = await publicApi<VerifyResult>("/public/verify", { text });
+      state.registry = found.facts?.registry || null;
+    }
+  } catch (error) { state.taskError = errorText(error); }
+  finally { state.taskBusy = false; render(); }
+}
+
+async function checkPage(): Promise<void> {
+  if (!state.ws || !state.me || state.taskBusy) return;
+  const url = httpUrl(state.url.trim());
+  if (!url) { state.taskError = t.invalidUrl; render(); return; }
+  state.taskBusy = true; state.taskChecked = false; state.taskError = ""; state.gestures = []; render();
+  try {
+    const facts = await api<GestureFact[]>(`${workspacePath()}/gestures`, { url });
+    state.gestures = facts.filter((fact) => fact.kind === "official_page");
+  } catch (error) { state.taskError = errorText(error); }
+  finally { state.taskBusy = false; state.taskChecked = true; render(); }
+}
+
+function renderTask(): HTMLElement {
+  const intent = state.capture?.intent;
+  const block = el("section", { class: "input-section task-section" });
+  block.append(button(t.tasks.back, () => { state.capture = null; state.taskError = ""; render(); }, { class: "quiet" }));
+  if (intent === "communique") {
+    const labels = t.tasks.communique;
+    block.append(el("h2", {}, labels.title), el("p", { class: "muted" }, labels.help));
+    if (state.capture?.kind === "image") {
+      if (state.url) block.append(link(state.url, hostname(state.url)));
+      block.append(el("p", { class: "notice" }, labels.imagePublic));
+    }
+    const field = el("textarea", { id: "communique-text", rows: "7", maxlength: String(MAX_TEXT), placeholder: labels.text });
+    field.value = state.text;
+    field.addEventListener("input", () => { state.text = field.value; state.registry = null; });
+    block.append(el("label", { for: "communique-text" }, labels.text), field,
+      button(state.taskBusy ? t.busy : labels.compare, () => { void compareCommunique(); }, { class: "ink", disabled: state.taskBusy }));
+    if (state.registry) {
+      const match = state.registry;
+      block.append(el("article", { class: `registry-result ${match.status}` },
+        el("h3", {}, labels.statuses[match.status]), el("p", {}, match.summary),
+        match.issuer && el("p", { class: "muted" }, `${match.issuer}${match.number ? ` · N° ${match.number}` : ""}`),
+        match.communique?.url && link(match.communique.url, labels.original),
+        renderRegistryDiff(match),
+      ));
+    } else if (!state.taskBusy && !state.taskError && state.quickVerify && !state.quickVerify.facts?.registry) block.append(el("p", { class: "muted" }, labels.publicNothing));
+  } else if (intent === "page") {
+    const labels = t.tasks.page;
+    block.append(el("h2", {}, labels.title), el("p", { class: "muted" }, labels.help));
+    const field = el("input", { id: "official-page-url", type: "url", maxlength: "2000" });
+    field.value = state.url;
+    field.addEventListener("input", () => { state.url = field.value; state.gestures = []; });
+    block.append(el("label", { for: "official-page-url" }, t.url), field,
+      button(state.taskBusy ? t.busy : labels.check, () => { void checkPage(); }, { class: "ink", disabled: !state.ws || state.taskBusy }));
+    if (!state.ws) block.append(el("p", { class: "notice" }, t.tasks.unavailable));
+    if (state.gestures.length) for (const fact of state.gestures) {
+      const proof = typeof fact.proof === "object" && fact.proof ? httpUrl(fact.proof.url || "") : null;
+      block.append(el("article", { class: "registry-result" }, el("p", {}, fact.text), proof && link(proof, labels.proof)));
+    }
+    else if (state.taskChecked && !state.taskBusy && !state.taskError) block.append(el("p", { class: "muted" }, labels.none));
+  } else if (intent === "reply") {
+    const labels = t.tasks.reply;
+    block.append(el("h2", {}, labels.title), el("p", { class: "muted" }, labels.help), el("blockquote", { class: "passage" }, state.text));
+    const signed = state.quickVerify?.signed;
+    if (signed) {
+      const reply = replyText(signed, config.webUrl);
+      block.append(el("p", {}, t.signedBy(signed.newsroom.name, frenchDate(signed.signed_at || signed.published_at))),
+        el("pre", { class: "reply-text" }, reply),
+        button(labels.place, () => {
+          const c = state.capture;
+          if (!c?.tabId) return;
+          void inTab(c.tabId, { op: "reply", text: reply }, c.frameId).then((result) => {
+            state.taskError = result.ok ? result.reply === "filled" ? t.place.replyDone : result.reply === "no_anchor" ? t.place.replyNoAnchor : t.place.replyNoBox : t.place.noAccess;
+            render();
+          });
+        }, { class: "ink" }));
+    } else if (state.quickVerify) block.append(el("p", { class: "notice" }, labels.none));
+    else block.append(el("p", { class: "muted" }, t.card.running));
+  }
+  if (state.taskError) block.append(el("p", { class: "notice", role: "status" }, state.taskError));
+  return block;
+}
+
 function render(): void {
+  if (state.capture?.intent && state.capture.intent !== "check") {
+    formArea.replaceChildren(renderAuth(), renderTask());
+    renderOutcome();
+    return;
+  }
   const busy = state.running || state.saving;
   const tabs = el("div", { class: "mode-tabs", role: "group", "aria-label": t.modeLabel });
   for (const mode of ["text", "link", "image"] as const) tabs.append(button(t.modes[mode], () => {
-    stop(); resetResults(); state.mode = mode; state.truncated = false; render();
+    stop(); resetResults(); state.capture = null; state.mode = mode; state.truncated = false; render();
   }, { "aria-pressed": String(state.mode === mode), disabled: busy }));
   const form = el("form", { class: "capture-form" });
   if (state.mode === "text") {
@@ -227,7 +332,7 @@ function render(): void {
     actions.append(submit);
   }
   actions.append(button(t.clear, () => {
-    stop(); resetResults(); state.text = ""; state.url = ""; state.caption = ""; state.pageUrl = ""; state.truncated = false; setFile(null);
+    stop(); resetResults(); state.capture = null; state.text = ""; state.url = ""; state.caption = ""; state.pageUrl = ""; state.truncated = false; setFile(null);
     void chrome.storage.session.remove(captureKey); render();
   }, { class: "quiet", disabled: busy }));
   form.append(actions);
@@ -568,17 +673,52 @@ function applyCapture(capture: Capture): void {
   if (!validCapture(capture) || capture.id === captureId) return;
   if (state.saving) { queuedCapture = capture; return; }
   captureId = capture.id; stop(); resetResults();
+  state.capture = capture;
+  state.quickVerify = null; state.registry = null; state.gestures = []; state.taskChecked = false; state.taskError = "";
   void chrome.storage.session.remove(captureKey);
   state.mode = capture.kind; state.text = capture.text; state.url = capture.url;
   state.caption = ""; state.pageUrl = capture.pageUrl; state.truncated = capture.truncated; setFile(null);
   render(); document.querySelector<HTMLElement>(state.mode === "text" ? "#content" : "#content-url")?.focus();
+  if (capture.kind === "text" && capture.tabId !== undefined && capture.intent !== "page") void answerOnPage(capture);
+}
+
+/** A right-click explicitly asks Checky for an answer beside the selected passage. The quick
+ * public route returns facts and signed verdicts only; the full panel check stays available. */
+async function answerOnPage(capture: Capture): Promise<void> {
+  const id = ++answerId;
+  const tabId = capture.tabId;
+  if (tabId === undefined) return;
+  const frameId = capture.frameId || 0;
+  const icons = glyphs();
+  const show = async (card: ReturnType<typeof pendingCard>) => {
+    if (id !== answerId) return;
+    await inTab(tabId, { op: "card", card, glyphs: icons }, frameId);
+  };
+  await show(pendingCard(capture.text, true));
+  try {
+    const result = await publicApi<VerifyResult>("/public/verify", { text: capture.text }, AbortSignal.timeout(65_000));
+    if (id === answerId && state.capture?.id === capture.id) {
+      state.quickVerify = result;
+      render();
+    }
+    await show(publicCard(capture.text, result, config.webUrl, capture.pageUrl));
+  } catch {
+    await show(failedCard(capture.text));
+  }
+}
+
+/** The static frame, rebuilt when the interface language changes; the form and result keep their state. */
+function frame(): void {
+  document.documentElement.lang = lang;
+  root.replaceChildren(el("header", { class: "masthead" },
+    el("div", { class: "brand" }, el("span", { class: "wordmark" }, t.name, el("em", { "aria-hidden": "true" }, "."))),
+    link(config.webUrl, t.open, "quiet-link"),
+  ), el("main", {}, el("div", { class: "intro" }, el("h1", {}, t.title), el("p", {}, t.lead)), formArea, outcome, settingsSection(() => { frame(); render(); })), el("footer", {}, t.footer), announce);
 }
 
 async function start(): Promise<void> {
-  root.append(el("header", { class: "masthead" },
-    el("div", { class: "brand" }, el("span", { class: "wordmark" }, t.name, el("em", { "aria-hidden": "true" }, "."))),
-    link(config.webUrl, t.open, "quiet-link"),
-  ), el("main", {}, el("div", { class: "intro" }, el("h1", {}, t.title), el("p", {}, t.lead)), formArea, outcome), el("footer", {}, t.footer), announce);
+  await loadLang();
+  frame();
   // A pasted screenshot or a dropped image file opens the Image tab with that file.
   const imageIn = (data: DataTransfer | null) => [...(data?.files || [])].find((file) => file.type.startsWith("image/"));
   document.addEventListener("paste", (event) => {
