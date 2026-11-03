@@ -12,6 +12,7 @@ import { glyphs, inTab } from "./lib/tab.ts";
 import { checkBody, frenchDate, hostname, httpUrl, IMAGE_TYPES, imageFileProblem, MAX_TEXT, validCapture } from "./lib/safety.ts";
 import type { Capture, Mode } from "./lib/safety.ts";
 import type { GestureFact, ImageResult, LinkResult, Me, Preparation, PublicResult, RegistryMatch, Step, StepKey, Verdict, VerifyResult } from "./lib/types.ts";
+import { mountWatch } from "./watch/panel.ts";
 
 type Sent = { mode: Mode; text: string; caption: string; url: string; file: File | null; pageUrl: string; ws: string; audience: "public" | "newsroom" };
 type Saved = { id: string; ref: string | null; pending: string[] };
@@ -19,6 +20,9 @@ const root = document.querySelector<HTMLDivElement>("#app")!;
 const formArea = el("div");
 const outcome = el("div", { id: "outcome" });
 const announce = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
+// « Veille sur la page »: its switch and the card a badge opens (src/watch/panel.ts).
+const watchArea = el("div");
+const watch = mountWatch(watchArea, { examine: (file) => { takeImage(file); } });
 const keys: StepKey[] = ["read", "claims", "search", "verdict"];
 const freshSteps = (): Step[] => keys.map((key) => ({ key, status: "waiting", summary: "" }));
 const state = {
@@ -338,6 +342,7 @@ function render(): void {
   form.append(actions);
   form.addEventListener("submit", (event) => { event.preventDefault(); if (!state.running && !state.saving) void run(); });
   formArea.replaceChildren(renderAuth(), el("section", { class: "input-section" }, tabs, form));
+  watch.update(state.me ? state.ws : "");
   renderOutcome();
 }
 
