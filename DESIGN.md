@@ -1,7 +1,7 @@
 # Checky — Vérifier ici
 
 The panel is the newsroom's verification margin beside the page, not a second website.
-It follows the existing « Le signal clair » identity in `fanilo-base/apps/web/DESIGN.md`.
+It follows the existing « Le signal clair » identity in `checky-platform/apps/web/DESIGN.md`.
 
 - Ground `#f3f2ee`, ink `#0a0a0b`, surface `#fbfaf7`, raised `#e9e8e2`, hairline `#dcdbd5`, secondary ink `#55544e`; dark inverts to `#0a0a0b` / `#f3f2ee`. Colour appears only on verdicts (vrai, faux, trompeur, invérifiable). Values live in `src/lib/tokens.ts`, pinned by `tokens.test.ts`.
 - Bricolage Grotesque carries everything; Cormorant Garamond italic 500 is reserved for verbatim passages. Both are bundled locally; there are no font network calls.

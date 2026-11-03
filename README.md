@@ -4,8 +4,8 @@ Check selected text, a link or an image without leaving the page. Checky opens b
 shows sources and related published verifications. **No account is needed.** A journalist still
 decides what to publish; a signed-in newsroom mode also offers AI-assisted analysis.
 
-The extension connects to the same newsroom API as the [web desk](https://github.com/0nlyDevs/fanilo-base)
-and the [phone app](https://github.com/0nlyDevs/fanilo-mobile). The interface is in French, Malagasy
+The extension connects to the same newsroom API as the [web desk](https://github.com/0nlyDevs/checky-platform)
+and the [phone app](https://github.com/0nlyDevs/checky-mobile). The interface is in French, Malagasy
 or English (panel **Réglages**); French is the source and fills any gap.
 
 ## What works
@@ -76,7 +76,7 @@ and choose your newsroom. The public result stays visible; nothing is saved unti
 to public checks. Public mode does not probe your website session even if you are already signed in.
 
 The build is configured for the production web and API URLs. The API needs `/public/check/stream`
-and `/public/image-check` from `fanilo-base`; `/public/check` remains available as JSON. Private newsroom mode uses the authenticated `link-check`
+and `/public/image-check` from `checky-platform`; `/public/check` remains available as JSON. Private newsroom mode uses the authenticated `link-check`
 and `image-check` endpoints. If the server is not updated, public checks show an availability error;
 they never silently send the content through another audience's endpoint.
 This repository does not publish to a browser store. Edge and Brave need manual validation;
@@ -187,7 +187,7 @@ does not claim to understand an image's scene from pixels.
 npm run check
 npm test
 npm run build
-npm run gen:api       # requires ../fanilo-base/packages/shared/openapi.json
+npm run gen:api       # requires ../checky-platform/packages/shared/openapi.json
 ```
 
 `src/lib/api-schema.d.ts` is generated; do not edit it by hand. API credentials stay in the server.

@@ -1,6 +1,6 @@
 // Malagasy. Machine-drafted from fr.ts: every line below is to be reread by a Malagasy speaker
 // before release (`// relire (mg)`). Any key missing here falls back to French (index.ts). The
-// verdict words match the web desk and the SMS line (fanilo-base).
+// verdict words match the web desk and the SMS line (checky-platform).
 import type { Overrides } from "./index.ts";
 
 // relire (mg)

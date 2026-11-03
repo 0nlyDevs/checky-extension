@@ -11,7 +11,7 @@
     "build:local": "tsc --noEmit && vite build --mode development",
     "check": "tsc --noEmit",
     "test": "node --test src/lib/*.test.ts",
-    "gen:api": "openapi-typescript ../fanilo-base/packages/shared/openapi.json -o src/lib/api-schema.d.ts"
+    "gen:api": "openapi-typescript ../checky-platform/packages/shared/openapi.json -o src/lib/api-schema.d.ts"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
