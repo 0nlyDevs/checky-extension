@@ -1,0 +1,23 @@
+/* « Veille sur la page » in the side panel: the switch and the card a badge opens. */
+.watch { border-bottom: 1px solid var(--rule); padding: 0 0 16px; margin-bottom: 24px; }
+.watch-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.watch-head h2 { margin: 0; }
+.watch-state { display: inline-flex; align-items: center; gap: 4px; font-size: .8125rem; font-weight: 650; color: var(--muted); border: 1px solid var(--rule); border-radius: var(--radius-tag); padding: 2px 8px; }
+.watch-state.on { color: var(--ink); border-color: var(--ink); }
+.watch-state svg { width: 14px; height: 14px; }
+.watch > .muted { margin: 8px 0; }
+.watch-help { font-size: .875rem; color: var(--muted); margin-bottom: 12px; }
+.watch-help summary { cursor: pointer; }
+.watch-help p { margin: 8px 0 0; }
+.watch-scope { border: 0; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.watch-scope legend { font-weight: 650; padding: 0; margin-bottom: 6px; }
+.watch-scope label { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 0; min-height: 32px; }
+.watch-scope input { width: 18px; height: 18px; accent-color: var(--ink); }
+.watch > button { width: 100%; }
+.watch-card { border: 1px solid var(--ink); border-radius: var(--radius-card); background: var(--paper); padding: 16px; margin-bottom: 24px; }
+.watch-card > h2 { display: flex; align-items: center; gap: 8px; }
+.watch-passage { border-left: 2px solid var(--ink); padding-left: 12px; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.watch-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.watch-chip { border: 1px solid var(--edge); border-radius: var(--radius-tag); padding: 2px 8px; font-size: .875rem; font-weight: 650; }
+.watch-frame { width: 100%; max-height: 220px; object-fit: contain; border-radius: 12px; background: var(--soft); display: block; margin-bottom: 8px; }
+.watch-card .no-conclusion h3 { display: flex; align-items: center; gap: 8px; margin-top: 12px; }

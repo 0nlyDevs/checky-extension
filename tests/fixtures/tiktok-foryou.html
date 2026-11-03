@@ -1,0 +1,78 @@
+<!doctype html>
+<!-- A saved, trimmed copy of TikTok's « Pour toi » feed on the web: data-e2e attributes as TikTok
+     publishes them in November 2026. The video is drawn locally (no media file, nothing fetched);
+     every caption is fictional and labelled « démo ». -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>TikTok - Make Your Day</title>
+<style>
+  body { margin: 0; background: #fff; font: 16px/1.4 "TikTokFont", Arial, sans-serif; color: #161823; }
+  header { height: 60px; border-bottom: 1px solid #e3e3e4; display: flex; align-items: center; padding: 0 20px; gap: 16px; position: sticky; top: 0; background: #fff; z-index: 3; }
+  .logo { font-weight: 800; font-size: 22px; letter-spacing: -.5px; }
+  .search { background: #f1f1f2; border-radius: 92px; padding: 10px 16px; width: 300px; color: #8a8b91; }
+  main { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 24px 0 120px; }
+  [data-e2e="recommend-list-item-container"] { display: flex; gap: 16px; width: 640px; border-bottom: 1px solid #e3e3e4; padding-bottom: 24px; }
+  .avatar { width: 56px; height: 56px; border-radius: 50%; background: #d0d1d3; flex: none; }
+  .info { flex: 1; min-width: 0; }
+  .author { display: flex; gap: 6px; align-items: baseline; }
+  [data-e2e="video-author-uniqueid"] { font-weight: 700; font-size: 18px; }
+  [data-e2e="video-author-nickname"] { font-size: 14px; color: #57585d; }
+  [data-e2e="video-desc"] { margin: 6px 0 12px; }
+  [data-e2e="video-desc"] a { color: #2b5db9; text-decoration: none; font-weight: 600; }
+  .player { position: relative; width: 340px; height: 604px; border-radius: 8px; overflow: hidden; background: #000; }
+  .player video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .actions { display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; padding-left: 12px; color: #57585d; font-size: 12px; }
+  .actions span { width: 48px; height: 48px; border-radius: 50%; background: #f1f1f2; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+<header><span class="logo">TikTok</span><span class="search">Rechercher</span></header>
+<main>
+  <div data-e2e="recommend-list-item-container">
+    <div class="avatar"></div>
+    <div class="info">
+      <div class="author"><a href="/@radio.tana.demo"><h3 data-e2e="video-author-uniqueid">radio.tana.demo</h3></a><h4 data-e2e="video-author-nickname">Radio Tana (démo)</h4></div>
+      <div data-e2e="video-desc"><span>72 heures de délestage dès demain sur tout Antananarivo, selon la JIRAMA ! Partagez avant que ce soit supprimé </span><a href="/tag/jirama"><strong>#jirama</strong></a> <a href="/tag/tana"><strong>#tana</strong></a></div>
+      <div style="display:flex">
+        <div class="player"><video id="v1" muted playsinline loop></video><a href="/@radio.tana.demo/video/7432100000000000001" aria-label="Ouvrir la vidéo" style="position:absolute;inset:auto 0 0 auto;width:1px;height:1px;overflow:hidden">vidéo</a></div>
+        <div class="actions"><span>♥</span>12,4 k<span>💬</span>1 803<span>↗</span>Partager</div>
+      </div>
+    </div>
+  </div>
+  <div data-e2e="recommend-list-item-container">
+    <div class="avatar"></div>
+    <div class="info">
+      <div class="author"><a href="/@cuisine.mada.demo"><h3 data-e2e="video-author-uniqueid">cuisine.mada.demo</h3></a><h4 data-e2e="video-author-nickname">Cuisine Mada (démo)</h4></div>
+      <div data-e2e="video-desc"><span>Le romazava de ma grand-mère, étape par étape </span><a href="/tag/recette"><strong>#recette</strong></a></div>
+      <div style="display:flex">
+        <div class="player"><video id="v2" muted playsinline loop></video><a href="/@cuisine.mada.demo/video/7432100000000000002" style="position:absolute;inset:auto 0 0 auto;width:1px;height:1px;overflow:hidden">vidéo</a></div>
+        <div class="actions"><span>♥</span>3 210<span>💬</span>88<span>↗</span>Partager</div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+  // Stand-in for the reel: a canvas animation streamed into the <video>, same origin, so a frame
+  // can be read like on a TikTok MSE stream.
+  for (const [id, title, colour] of [["v1", "DÉLESTAGE 72H ?!", "#c0392b"], ["v2", "ROMAZAVA", "#2e7d32"]]) {
+    const canvas = Object.assign(document.createElement("canvas"), { width: 360, height: 640 });
+    const g = canvas.getContext("2d");
+    let n = 0;
+    const draw = () => {
+      n++;
+      g.fillStyle = "#111"; g.fillRect(0, 0, 360, 640);
+      g.fillStyle = colour; g.fillRect(0, 230 + Math.sin(n / 20) * 20, 360, 150);
+      g.fillStyle = "#fff"; g.font = "bold 34px Arial"; g.textAlign = "center";
+      g.fillText(title, 180, 315 + Math.sin(n / 20) * 20);
+      g.font = "16px Arial"; g.fillText("démo · vidéo fictive", 180, 600);
+      requestAnimationFrame(draw);
+    };
+    draw();
+    const video = document.getElementById(id);
+    video.srcObject = canvas.captureStream(30);
+    if (id === "v1") video.play();
+  }
+</script>
+</body>
+</html>

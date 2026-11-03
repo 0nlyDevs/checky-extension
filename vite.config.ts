@@ -2,6 +2,8 @@ import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
 import { defineConfig, loadEnv } from "vite";
 import { buildSprite } from "./src/lib/sprite.ts";
+import { contentScript } from "./src/content/build.ts";
+import { ALL_WATCH_ORIGINS } from "./src/lib/watch.ts";
 
 function origin(value: string): string {
   const url = new URL(value);
@@ -36,6 +38,8 @@ export default defineConfig(({ mode }) => {
           minimum_chrome_version: "116",
           permissions: ["activeTab", "contextMenus", "scripting", "sidePanel", "storage"],
           host_permissions: [...new Set([`${webUrl}/*`, `${apiUrl}/*`])],
+          // « Veille sur la page »: asked only when the journalist turns it on.
+          optional_host_permissions: ALL_WATCH_ORIGINS,
           background: { service_worker: "background.js", type: "module" },
           action: { default_title: "Ouvrir Checky" },
           side_panel: { default_path: "sidepanel.html" },
@@ -43,7 +47,7 @@ export default defineConfig(({ mode }) => {
           content_security_policy: { extension_pages: "script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'" },
         }, null, 2) });
       },
-    }],
+    }, contentScript(import.meta.dirname, local ? "dist-local" : "dist")],
     build: {
       outDir: local ? "dist-local" : "dist",
       target: "chrome116",

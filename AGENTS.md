@@ -1,7 +1,7 @@
 # FANILO extension
 
 - npm only. Code, documentation and commits in English. UI copy: French source in `src/i18n/fr.ts`; `en.ts` and `mg.ts` override it (mark Malagasy you write `// relire (mg)`). Read strings through `src/i18n/index.ts`.
-- Manifest V3, TypeScript and Vite. Never request access to all sites or add content scripts for passive monitoring.
+- Manifest V3, TypeScript and Vite. Never request access to all sites or add declared content scripts. The one exception to « no page script » is « Veille sur la page » (`src/content`, `src/watch`): optional Facebook/TikTok hosts asked when the journalist turns it on, injected only into tabs they chose, removed when off, visible text only, closed shadow roots.
 - Only send selected content after an explicit confirmation. Use `textContent`, never inject page or model HTML.
 - The website owns authentication. Use its existing cookie through a credentialed request to its token endpoint; never read cookies or ask for a password inside the extension.
 - Open in public mode, without token requests or a login gate. Anonymous checks use `/public/check`, `/public/image-check` and `/public/image-check/file` (an image file as the raw body) with no credentials. Never silently fall back from private analysis to public processing.

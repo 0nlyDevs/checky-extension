@@ -219,7 +219,9 @@ def main():
                 # Observe this browser context, not unrelated clients probing the local ports.
                 assert not [r for r in browser_requests if r[1].startswith("http")], browser_requests
                 manifest = panel.evaluate("chrome.runtime.getManifest()")
-                assert set(manifest["permissions"]) == {"contextMenus", "sidePanel", "storage"}
+                assert set(manifest["permissions"]) == {"contextMenus", "sidePanel", "storage", "scripting"}
+                # « Veille sur la page » asks for these only when the journalist turns it on (tests/e2e_watch.py).
+                assert manifest["optional_host_permissions"] == ["https://*.facebook.com/*", "https://*.tiktok.com/*"]
                 assert "content_scripts" not in manifest and "externally_connectable" not in manifest
 
                 panel.screenshot(path=str(OUT / "panel-ready.png"), full_page=True)

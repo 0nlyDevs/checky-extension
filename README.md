@@ -37,6 +37,17 @@ or English (panel **Réglages**); French is the source and fills any gap.
 - Save a dossier only after confirmation, with the original links and selected evidence. Failed
   source attachments can be retried without creating another dossier. The extension never confirms
   or publishes a verdict.
+- **Veille sur la page** (off by default): switched on in the panel for the current tab, or for
+  Facebook and TikTok in every tab, it reads the visible text of the posts on screen and badges
+  those that match a published verdict (« Déjà vérifié · Trompeur », icon and word) or, with a
+  connected newsroom, one of its « Mots surveillés » (« Mot surveillé : cyclone »). One click on a
+  badge opens its card in the panel, with the passage ready for « Vérifier ce contenu ».
+- **The Checky bubble on TikTok** (web): while the watch is on at tiktok.com, a draggable Checky
+  disc sits on the edge of the playing video. A tap reads the caption and author (from the page,
+  else TikTok's public oEmbed), grabs the current frame when the browser allows it, and opens a
+  small card over the video: the numbered line, the main claim, « Déjà vérifié » with the newsroom,
+  date and verdict when one is published. « Voir tout » opens the panel. A long press hides the
+  bubble until the browser closes.
 
 **Image analysis is not a reliable yes/no detector.** No markers does not mean authentic.
 Content Credentials structures are detected, not cryptographically verified. A pixel detector is
@@ -98,11 +109,28 @@ The manifest's host permissions are generated from exactly those two origins.
 | `contextMenus` | Receive only the selection, image URL or link chosen with a right-click |
 | `sidePanel` | Show the verification beside the page |
 | `storage` | Keep short-lived authentication and capture handoff in `storage.session`; the language preference in `storage.local` |
+| `scripting` | Add the page reader to a Facebook or TikTok tab, only while « Veille sur la page » is on |
+| Optional: `https://*.facebook.com/*`, `https://*.tiktok.com/*` | Asked by the browser when the journalist first turns the watch on; can be withdrawn in the extension's settings |
 | Checky web/API origins | Call public checks; obtain a session JWT only after an explicit optional connection |
 
-There are **no content scripts**, no access to all sites, no cookie-reading permission, no
-clipboard monitoring, no browsing history and no external messaging. Website selection is
+There are **no declared content scripts**, no access to all sites, no cookie-reading permission, no
+clipboard monitoring, no browsing history and no external messaging. The only page script is the
+« Veille sur la page » reader: it is injected into a Facebook or TikTok tab only after the
+journalist turns the watch on (for that tab, or for those two sites in every tab), and removed
+when it is turned off. The switch lives in `storage.session`, so it ends with the browser session. Website selection is
 untrusted data, never HTML to execute. Links are restricted to HTTP(S) without credentials.
+
+The watch reads visible text only (Facebook changes its page structure often), never comments
+nested under a post, and only posts near the screen. Watched words are compared in the browser.
+To compare with published verdicts, the visible text of a post (at most 1,200 characters) goes to
+`/public/match` without credentials; results are cached per passage, at most 12 posts go in one
+batch, two calls run at a time and the reader pauses after 60 new passages in 5 minutes. With a
+connected newsroom, the panel reads its watched words once (`/workspaces/{ws}/signals`). Nothing
+is scraped server-side, nothing is stored, and no other tab is read. The bubble's frame is drawn
+from the playing video only when the browser allows it (a cross-origin video cannot be read and is
+skipped); it stays in the page's memory, goes to the panel only with « Voir tout », is removed from
+session storage as soon as the panel reads it, and is sent nowhere unless the journalist clicks
+« Examiner l’image du moment ». Closing the card drops it.
 
 Captures are scoped to their window, expire after 15 minutes if not consumed, and are removed
 from session storage when loaded. Results stay in the panel's memory. JWTs expire after 15 minutes
@@ -173,7 +201,16 @@ Build tools and their versions are pinned in `package-lock.json`.
 ```bash
 npm run build:local
 uv run --with playwright python tests/e2e.py
+uv run --with playwright python tests/e2e_watch.py
 ```
+
+`tests/e2e_watch.py` drives « Veille sur la page » on saved, fictional copies of a Facebook feed and
+a TikTok « Pour toi » feed (`tests/fixtures/`, served at their real addresses through Playwright
+routing, no account): nothing read while off, per-tab and per-site switches, batched matching,
+infinite scroll, badge → panel card, the bubble (tap, card, frame, « Voir tout », drag, long
+press) and switching off. The watch test uses ports 3000 and 8000 by default. To keep existing
+servers untouched, build with `VITE_FANILO_WEB_URL=http://localhost:3157` and
+`VITE_FANILO_API_URL=http://localhost:8157`, then run it with `WATCH_PORTS=3157,8157`.
 
 The browser test loads the actual built extension in a fresh Chromium profile. Its local HTTP
 fixtures first verify text and images anonymously, asserting that no token request is made.

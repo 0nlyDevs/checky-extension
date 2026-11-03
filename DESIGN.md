@@ -34,3 +34,11 @@ actual search queries, service failures and passages genuinely read. Search snip
 as snippets. An unavailable search gets an ink failure marker rather than a completed-reading
 check; zero-source messages never stand in for a blocked service. Possible reprises are neutral
 warnings, not another truth colour or a count of independent confirmations.
+
+
+« Veille sur la page » draws inside Facebook and TikTok, in closed shadow roots that the page
+cannot restyle: a pill per matched post (the Checky disc, then the verdict icon and word on the
+verdict's soft tint, or an eye and « Mot surveillé : … » on paper), and on TikTok a 52 px ink disc
+with the Checky mark on the edge of the playing video. Its card repeats the panel's numbered
+line in miniature; a signed verdict is a solid block, « Pas encore de verdict signé » a dashed
+one. Focus inside the page uses the signal yellow (focus is one of its three uses).

@@ -3,6 +3,7 @@ import { checkyPage } from "./page/inject.ts";
 import { captureFromMenu, httpUrl, MAX_TEXT } from "./lib/safety.ts";
 import type { Capture } from "./lib/safety.ts";
 import { localizeMenus, watchMenuLanguage } from "./menus.ts";
+import { installWatch } from "./watch/background.ts";
 
 const WEB = ["http://*/*", "https://*/*"];
 const FACEBOOK = ["https://*.facebook.com/*", "https://facebook.com/*"];
@@ -64,3 +65,6 @@ chrome.runtime.onMessage.addListener((message: unknown, sender) => {
   void openPanel(sender.tab);
   void chrome.storage.session.set({ [`capture:${sender.tab.windowId}`]: capture });
 });
+
+// « Veille sur la page » (src/watch/background.ts).
+installWatch();
